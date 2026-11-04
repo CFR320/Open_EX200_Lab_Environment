@@ -1,0 +1,9 @@
+FROM registry.lab.example.com:5000/python:3.13-alpine
+
+COPY worker.py /usr/local/bin/ex200-asciipdf.py
+RUN chmod 0755 /usr/local/bin/ex200-asciipdf.py
+
+ENV INPUT_DIR=/opt/incoming
+ENV OUTPUT_DIR=/opt/outgoing
+
+CMD ["python3", "/usr/local/bin/ex200-asciipdf.py"]

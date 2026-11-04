@@ -1,0 +1,202 @@
+[
+  {
+    "id": "network",
+    "number": 1,
+    "node": "node1",
+    "title": "Configurar la red",
+    "prompt": "Configura el nombre de host node1.lab.example.com, la dirección IPv4 172.25.250.10/24, la puerta de enlace 172.25.250.254 y el DNS 172.25.254.254. Ajusta la configuración para que persista tras reiniciar.",
+    "source": "Pregunta 1 del documento"
+  },
+  {
+    "id": "repositories",
+    "number": 2,
+    "node": "node1",
+    "title": "Configurar repositorios de paquetes",
+    "prompt": "Configura repositorios BaseOS y AppStream persistentes y habilitados: http://content.example.com/rhel8.0/x86_64/dvd/BaseOS y http://content.example.com/rhel8.0/x86_64/dvd/AppStream. El gateway proxifica los repositorios Rocky Linux 10.",
+    "source": "Pregunta 2 del documento"
+  },
+  {
+    "id": "selinux-web",
+    "number": 3,
+    "node": "node1",
+    "title": "Diagnosticar SELinux para el servidor web",
+    "prompt": "Corrige el servicio web para servir el contenido existente de /var/www/html por el puerto TCP 82. No modifiques los archivos HTML. El servicio debe arrancar automáticamente. Verifica el resultado con curl.",
+    "source": "Pregunta 3 del documento"
+  },
+  {
+    "id": "cron",
+    "number": 4,
+    "node": "node1",
+    "title": "Programar tareas cron",
+    "prompt": "Como natasha, configura una tarea cada minuto que ejecute logger \"EX200 in progress\" y otra diaria a las 14:23 que ejecute /usr/bin/echo \"welcome\".",
+    "source": "Pregunta 4 del documento"
+  },
+  {
+    "id": "users-groups",
+    "number": 5,
+    "node": "node1",
+    "title": "Crear usuarios y grupo",
+    "prompt": "Crea el grupo sysadms y los usuarios natasha, harry y sarah. Natasha y harry deben pertenecer a sysadms; sarah debe usar un shell nologin. La contraseña indicada en el documento fuente es trootent.",
+    "source": "Pregunta 5 del documento"
+  },
+  {
+    "id": "collaborative-directory",
+    "number": 6,
+    "node": "node1",
+    "title": "Crear un directorio colaborativo",
+    "prompt": "Crea /home/sysadms con grupo propietario sysadms, permisos completos para el propietario y el grupo, ninguno para otros, y SGID para heredar el grupo en los elementos nuevos.",
+    "source": "Pregunta 6 del documento"
+  },
+  {
+    "id": "chrony",
+    "number": 7,
+    "node": "node1",
+    "title": "Configurar Chrony",
+    "prompt": "Configura chronyd para sincronizar con classroom.example.com (el servidor NTP del gateway) y habilítalo para que arranque automáticamente.",
+    "source": "Pregunta 7 del documento"
+  },
+  {
+    "id": "autofs",
+    "number": 8,
+    "node": "node1",
+    "title": "Configurar automontaje NFS",
+    "prompt": "Configura autofs para que classroom.example.com:/home/remoteuser6 se monte bajo /home/guests/remoteuser6 al acceder a él. El gateway exporta el home NFS de la cuenta remoteuser6 (UID 2006, contraseña redhat).",
+    "source": "Pregunta 8 del documento"
+  },
+  {
+    "id": "bob-uid",
+    "number": 9,
+    "node": "node1",
+    "title": "Crear usuario con UID específico",
+    "prompt": "Crea el usuario bob con UID 2112 y establece la contraseña indicada en el documento fuente: trootent.",
+    "source": "Pregunta 9 del documento"
+  },
+  {
+    "id": "tar-archive",
+    "number": 10,
+    "node": "node1",
+    "title": "Crear un archivo comprimido",
+    "prompt": "Crea /root/test.tar.gz como archivo gzip del directorio /var/tmp.",
+    "source": "Pregunta 10 del documento"
+  },
+  {
+    "id": "find-sarah-files",
+    "number": 11,
+    "node": "node1",
+    "title": "Localizar y copiar archivos",
+    "prompt": "Localiza todos los archivos propiedad de sarah y cópialos bajo /root/find_user, conservando sus atributos.",
+    "source": "Pregunta 11 del documento"
+  },
+  {
+    "id": "grep-passwd",
+    "number": 12,
+    "node": "node1",
+    "title": "Buscar texto en /etc/passwd",
+    "prompt": "Busca las líneas de /etc/passwd que contienen la cadena home y guarda el resultado en /root/search.txt.",
+    "source": "Pregunta 12 del documento"
+  },
+  {
+    "id": "container-image",
+    "number": 13,
+    "node": "node1",
+    "title": "Construir la imagen de contenedor monitor",
+    "prompt": "Como usuario student, inicia sesión en registry.lab.example.com:5000 (student/redhat). Descarga http://content.example.com/containers/Containerfile y worker.py en el mismo directorio y construye la imagen monitor sin modificar el Containerfile: podman build -t monitor -f Containerfile .",
+    "source": "Pregunta 13 del documento"
+  },
+  {
+    "id": "container-service",
+    "number": 14,
+    "node": "node1",
+    "title": "Ejecutar asciipdf como servicio de usuario",
+    "prompt": "Usa la imagen monitor para crear el contenedor asciipdf. Monta /opt/files en /opt/incoming y /opt/processed en /opt/outgoing. Configura el servicio systemd container-asciipdf para el usuario student, habilitado para iniciar tras reiniciar sin intervención manual.",
+    "source": "Pregunta 14 del documento"
+  },
+  {
+    "id": "root-password-recovery",
+    "number": 15,
+    "node": "node2",
+    "title": "Recuperar el acceso de root",
+    "prompt": "Recupera el acceso de root desde la consola del hipervisor mediante el procedimiento de recuperación del arranque. Esta pregunta requiere consola interactiva; el validador solo puede comprobar que root tiene una contraseña utilizable.",
+    "source": "Pregunta 15 del documento"
+  },
+  {
+    "id": "repositories-node2",
+    "number": 16,
+    "node": "node2",
+    "title": "Configurar repositorios de paquetes",
+    "prompt": "Configura BaseOS y AppStream con http://content.example.com/rhel8.0/x86_64/dvd/BaseOS y http://content.example.com/rhel8.0/x86_64/dvd/AppStream. Comprueba que están habilitados.",
+    "source": "Pregunta 16 del documento"
+  },
+  {
+    "id": "swap",
+    "number": 17,
+    "node": "node2",
+    "title": "Crear una partición swap",
+    "prompt": "Crea una partición swap de 512 MiB y configúrala para activarse de forma permanente. Identifica el disco adicional vacío del nodo; el nombre del dispositivo puede variar según el hipervisor.",
+    "source": "Pregunta 17 del documento"
+  },
+  {
+    "id": "logical-volume",
+    "number": 18,
+    "node": "node2",
+    "title": "Crear y montar un volumen lógico",
+    "prompt": "Crea el volumen lógico lvname en el grupo de volúmenes groupname usando 50 extensiones de 8 MiB. Formatea con ext3 y móntalo de forma persistente en /mnt/lvname.",
+    "source": "Pregunta 18 del documento"
+  },
+  {
+    "id": "resize-lv",
+    "number": 19,
+    "node": "node2",
+    "title": "Redimensionar el volumen lógico",
+    "prompt": "Redimensiona lvname para que, después de reiniciar, su tamaño esté entre 200 MiB y 300 MiB. El documento propone 230 MiB como objetivo.",
+    "source": "Pregunta 19 del documento"
+  },
+  {
+    "id": "tuned",
+    "number": 20,
+    "node": "node2",
+    "title": "Configurar el perfil tuned",
+    "prompt": "Selecciona como perfil activo de tuned el recomendado para el sistema y habilita tuned para iniciar automáticamente.",
+    "source": "Pregunta 20 del documento"
+  },
+  {
+    "id": "mysearch-script",
+    "number": 21,
+    "node": "node1",
+    "title": "Crear el script mysearch",
+    "prompt": "Crea un script ejecutable llamado mysearch que localice archivos bajo /usr/share de 10 MiB o más y los copie a /root/myfiles. El texto fuente contiene una discrepancia entre «10M» y «-10M»; se interpreta como 10 MiB o más.",
+    "source": "Pregunta adicional 1 del documento"
+  },
+  {
+    "id": "password-expiry",
+    "number": 22,
+    "node": "node1",
+    "title": "Establecer caducidad de contraseñas",
+    "prompt": "Configura una caducidad máxima de 30 días para las cuentas locales de práctica, incluida harry. Conserva sin caducidad la cuenta técnica vagrant que se usa para la gestión SSH del laboratorio.",
+    "source": "Pregunta adicional 2 del documento"
+  },
+  {
+    "id": "harry-login-message",
+    "number": 23,
+    "node": "node1",
+    "title": "Configurar el entorno de inicio de sesión de harry",
+    "prompt": "Configura el perfil de inicio de sesión de harry para mostrar «welcome to advantage pro» al iniciar sesión.",
+    "source": "Pregunta adicional 3 del documento"
+  },
+  {
+    "id": "sudo-group",
+    "number": 24,
+    "node": "node1",
+    "title": "Configurar sudo sin contraseña",
+    "prompt": "Configura el grupo elite para que sus miembros puedan ejecutar cualquier comando con sudo sin contraseña. Usa una configuración válida de sudoers.",
+    "source": "Pregunta adicional 4 del documento"
+  },
+  {
+    "id": "acl-fstab",
+    "number": 25,
+    "node": "node1",
+    "title": "Configurar ACL en una copia de fstab",
+    "prompt": "Copia /etc/fstab a /var/tmp/fstab. El propietario y grupo deben ser root, nadie debe tener permiso de ejecución, sarah debe leer y escribir, harry no debe leer ni escribir, y otros usuarios deben poder leer.",
+    "source": "Pregunta adicional 5 del documento"
+  }
+]

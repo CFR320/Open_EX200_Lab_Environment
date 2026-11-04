@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Laboratorio práctico EX200</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">EX200 <span>LAB</span></a>
+    <div id="timer" class="timer" aria-live="polite" hidden>03:00:00</div>
+  </header>
+  <main>
+    <section id="welcome" class="welcome panel">
+      <p class="eyebrow">ROCKY LINUX 10 · PRÁCTICA RHCSA</p>
+      <h1>Prepara tu intento</h1>
+      <p>Cada intento incluye las 20 preguntas principales y 4 preguntas adicionales seleccionadas al azar. Dispones de 3 horas y la puntuación máxima es 300 puntos; se aprueba con 210.</p>
+      <ul class="requirements">
+        <li>Inicia las máquinas con <code>vagrant up</code> antes de comenzar.</li>
+        <li>Resuelve los ejercicios por SSH o desde la consola del hipervisor.</li>
+        <li>Al finalizar, se comprobarán las configuraciones en ambas máquinas.</li>
+      </ul>
+      <button id="start" class="button primary">Comenzar intento</button>
+      <p id="start-error" class="error" role="alert"></p>
+    </section>
+
+    <section id="exam" hidden>
+      <div class="exam-heading">
+        <div>
+          <p class="eyebrow">INTENTO EN CURSO</p>
+          <h1>Preguntas del examen</h1>
+        </div>
+        <button id="finish" class="button danger">Finalizar y corregir</button>
+      </div>
+      <p id="exam-status" class="muted"></p>
+      <nav id="node-tabs" class="node-tabs" aria-label="Filtrar por máquina"></nav>
+      <div id="questions" class="questions"></div>
+    </section>
+
+    <section id="results" class="panel results" hidden>
+      <p class="eyebrow">RESULTADO DEL INTENTO</p>
+      <h1 id="result-title"></h1>
+      <p id="score" class="score"></p>
+      <p id="result-message"></p>
+      <div id="result-details" class="result-details"></div>
+      <button id="again" class="button primary">Nuevo intento</button>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="alert" hidden></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
