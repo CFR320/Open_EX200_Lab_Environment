@@ -87,9 +87,9 @@ restorecon -RF /var/www/ex200
 
 rm -f /etc/nginx/conf.d/default.conf
 install -d -o nginx -g nginx -m 0755 /var/cache/nginx/ex200
-dns_resolver=$(awk '/^nameserver[[:space:]]+/ {print $2; exit}' /etc/resolv.conf)
+dns_resolver=$(awk '$1 == "nameserver" && $2 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ {print $2; exit}' /etc/resolv.conf)
 if [[ -z "$dns_resolver" ]]; then
-  echo "No DNS resolver is configured for the repository proxy." >&2
+  echo "No IPv4 DNS resolver is configured for the repository proxy." >&2
   exit 1
 fi
 cat > /etc/nginx/conf.d/ex200-lab.conf <<'NGINX'

@@ -60,11 +60,21 @@ Las cinco preguntas con cero puntos en esta ejecución fueron 1, 7, 8, 13 y 14. 
 | CHECK-04 | Contenedores | Imagen, unidad systemd de usuario y persistencia tras reinicio | Login, build rootless y PDF aprobados; unidad systemd de usuario pendiente |
 | CHECK-05 | Recuperación de root | Recuperar desde la consola del hipervisor y volver a iniciar por SSH | Pendiente de comprobación manual |
 
+## Verificación posterior de aprovisionamiento (2026-11-05)
+
+- En Linux con Vagrant 2.4.9 y VirtualBox, `vagrant validate` pasó y las tres máquinas arrancaron sin reprovisionar las bases de los nodos.
+- El aprovisionamiento del gateway encontró primero una dirección DNS IPv6 que nginx rechazaba en la directiva `resolver`. Ahora el proxy selecciona un resolver IPv4; el aprovisionamiento completo pasó.
+- `lab-network` no encontraba la NIC NAT si la ruta por defecto inicial estaba en la interfaz del laboratorio. Ahora identifica la otra conexión activa y configura correctamente ambos nodos.
+- `lab-network` se ejecuta en cada `vagrant up` y `vagrant reload`, porque Vagrant puede restablecer las conexiones de red al reconfigurar las NIC. Se comprobó con recargas normales de ambos nodos sin reprovisionar `base`.
+- En node2, el menú de GRUB se mantiene visible 60 segundos para editar la entrada del kernel durante la recuperación de root. La configuración generada pasó `grub2-script-check` y persistió tras una recarga normal; los seis validadores de node2 siguieron aprobados.
+- Después de las recargas, pasaron DNS para `classroom.example.com` y `registry.lab.example.com`, el health endpoint del gateway, los metadatos BaseOS/AppStream, y el automontaje NFS. Los validadores dieron 15/19 en node1 y 6/6 en node2; las fallas restantes corresponden a Chrony, los ejercicios de contenedor y ACL aún no resueltos.
+- VMware y Hyper-V siguen pendientes: esta verificación solo pudo ejecutarse con VirtualBox en Linux.
+
 ## Acciones para desbloquear y completar
 
-1. Resolver las preguntas 1, 2, 7, 8, 13 y 16 desde `student`, sin reutilizar las acciones de smoke test como respuestas del usuario.
-2. Completar Q14 con el servicio systemd de usuario y comprobar que el worker genera PDF desde archivos montados.
-3. Ejecutar una prueba manual de Q15 desde la consola de VirtualBox: recuperar GRUB, cambiar la contraseña, completar relabel SELinux y confirmar el inicio de sesión.
-4. Repetir un intento completo con gateway, medir la puntuación y reiniciar los nodos para verificar persistencia.
+1. Resolver Q7, Q13 y Q14 desde `student`, sin reutilizar las acciones de smoke test como respuestas del usuario; completar también la adicional 5 cuando sea seleccionada.
+2. Ejecutar una prueba manual de Q15 desde la consola de VirtualBox: recuperar GRUB, cambiar la contraseña, completar relabel SELinux y confirmar el inicio de sesión.
+3. Repetir un intento completo con gateway, medir la puntuación y reiniciar los nodos para verificar persistencia.
+4. Repetir la validación de aprovisionamiento en VMware y Hyper-V cuando esos proveedores estén disponibles.
 
 No ejecutar `vagrant destroy` sobre estas VMs: contienen el estado resuelto de esta ejecución.

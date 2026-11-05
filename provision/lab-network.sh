@@ -20,7 +20,7 @@ while IFS=: read -r connection device; do
   if grep -q '^172\.25\.250\.' <<< "$addresses"; then
     lab_connection=$connection
   fi
-  if ip -4 route show default | grep -q " dev ${device} "; then
+  if [[ "$connection" != "$lab_connection" && "$device" != "lo" ]]; then
     nat_connection=$connection
   fi
 done < <(nmcli -t -f NAME,DEVICE connection show --active)

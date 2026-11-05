@@ -42,7 +42,16 @@ Vagrant.configure("2") do |config|
         machine.vm.provision "shell", path: "gateway/provision.sh"
       else
         machine.vm.provision "shell", name: "base", path: "provision/base.sh"
-        machine.vm.provision "shell", name: "lab-network", path: "provision/lab-network.sh"
+        machine.vm.provision "shell",
+          name: "lab-network",
+          path: "provision/lab-network.sh",
+          run: "always"
+        if name == "node2"
+          machine.vm.provision "shell",
+            name: "grub-recovery",
+            path: "provision/grub-recovery.sh",
+            run: "always"
+        end
         machine.vm.disk :disk, size: "2GB", name: "practice-data" if name == "node2"
       end
     end

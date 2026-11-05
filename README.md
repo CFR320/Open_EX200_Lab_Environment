@@ -61,6 +61,8 @@ vagrant provision node2 --provision-with lab-network
 
 En un despliegue antiguo, ejecuta también `vagrant provision node1 --provision-with base` una vez para crear la cuenta local `remoteuser6` que corresponde al UID exportado por NFS. No reprovisiones la base de `node2` si quieres conservar el estado de recuperación de root y tuned.
 
+La configuración de ruta y DNS de `lab-network` se reaplica automáticamente en cada `vagrant up` o `vagrant reload`, ya que Vagrant puede restablecer las conexiones de red al arrancar. Si usas `--no-provision`, ejecuta manualmente los dos comandos `vagrant provision ... --provision-with lab-network` anteriores.
+
 Para trabajar desde la pasarela:
 
 ```bash
@@ -74,7 +76,7 @@ La cuenta de práctica es `student` con contraseña `redhat`; el acceso por cont
 
 El gateway sirve el archivo de repositorios de ejemplo en `http://content.example.com/repos/ex200.repo`. Los nombres `classroom.example.com`, `content.example.com` y `registry.lab.example.com` solo se resuelven desde la red privada del laboratorio.
 
-La pantalla/consola de cada VM en el hipervisor está disponible para recuperación de GRUB, contraseña o arranque. En node2, root empieza bloqueado y tuned usa inicialmente el perfil `balanced` para que esas tareas no aparezcan ya resueltas. El segundo disco de 2 GB se asigna a node2 para practicar swap y LVM; el nombre del dispositivo se debe confirmar con `lsblk` porque puede variar por proveedor.
+La pantalla/consola de cada VM en el hipervisor está disponible para recuperación de GRUB, contraseña o arranque. En node2, el menú de GRUB permanece visible durante 60 segundos para permitir editar la entrada del kernel con `e`; root empieza bloqueado y tuned usa inicialmente el perfil `balanced` para que esas tareas no aparezcan ya resueltas. El segundo disco de 2 GB se asigna a node2 para practicar swap y LVM; el nombre del dispositivo se debe confirmar con `lsblk` porque puede variar por proveedor.
 
 Inicia la interfaz y el validador en la máquina anfitriona:
 
