@@ -16,15 +16,13 @@ Laboratorio local para practicar tareas tipo RHCSA sobre Rocky Linux 10. El repo
 
 - Linux, macOS o Windows con WSL2.
 - VirtualBox, VMware Workstation/Fusion o Hyper-V.
-- Vagrant 2.4.9 o posterior y la caja `rockylinux/10`.
+- Vagrant 2.4.9 o posterior y la caja `bento/rockylinux-10`.
 - Python 3.9 o posterior, OpenSSH y conectividad para descargar la caja y los paquetes iniciales.
 - 8 GB de RAM para las VMs (2 + 3 + 3 GB), además de memoria para el sistema anfitrión, y espacio para tres VMs.
 
-Vagrant necesita el proveedor/plugin correspondiente. En Hyper-V, crea o selecciona el conmutador virtual que Vagrant solicite. Para VMware, instala el plugin de proveedor de Vagrant VMware. La caja oficial Rocky Linux 10 probada publica proveedores VirtualBox, VMware y libvirt, pero no Hyper-V; este proveedor necesita una caja Rocky compatible distinta.
+Vagrant necesita el proveedor/plugin correspondiente. En Hyper-V, crea o selecciona el conmutador virtual que Vagrant solicite. Para VMware, instala el plugin de proveedor de Vagrant VMware. La caja `bento/rockylinux-10` publica proveedores VMware y VirtualBox, pero no Hyper-V. La configuración de VMware limita el hardware virtual a la versión 19 para mantener compatibilidad con VMware Workstation 16.2.5 y elimina en `node2` una entrada `redo` vacía de la caja que impide al plugin adjuntar el disco de práctica.
 
 En VirtualBox, el tráfico privado de los nodos usa una red interna aislada del anfitrión; SSH desde el anfitrión sigue disponible mediante los puertos NAT que administra Vagrant. Así se evita depender de los rangos host-only permitidos por la configuración local de VirtualBox.
-
-La metadata de la caja `rockylinux/10` puede apuntar a artefactos antiguos ya retirados. Si la descarga automática falla con HTTP 404, consulta el directorio oficial de imágenes Rocky y añade la caja del proveedor elegido localmente (`vagrant box add --name rockylinux/10 --provider virtualbox <URL>`); verifica el checksum SHA-256 oficial antes de instalarla.
 
 ## Arranque
 

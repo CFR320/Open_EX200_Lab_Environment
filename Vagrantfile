@@ -1,5 +1,7 @@
+require_relative "vagrant/vmware_compat"
+
 Vagrant.configure("2") do |config|
-  config.vm.box = "rockylinux/10"
+  config.vm.box = "bento/rockylinux-10"
   config.vm.boot_timeout = 900
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
@@ -23,6 +25,7 @@ Vagrant.configure("2") do |config|
       end
 
       machine.vm.provider "vmware_desktop" do |provider|
+        provider.vmx["virtualhw.version"] = "19"
         provider.vmx["memsize"] = settings[:memory].to_s
         provider.vmx["numvcpus"] = settings[:cpus].to_s
       end
