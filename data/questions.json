@@ -116,7 +116,7 @@
     "number": 15,
     "node": "node2",
     "title": "Recuperar el acceso de root",
-    "prompt": "Recupera el acceso de root desde la consola del hipervisor mediante el procedimiento de recuperación del arranque. Esta pregunta requiere consola interactiva; el validador solo puede comprobar que root tiene una contraseña utilizable.",
+    "prompt": "Recupera el acceso de root desde la consola del hipervisor mediante el procedimiento de recuperación del arranque. En node2 no hay acceso SSH de student; inicia sesión como root desde la consola después de recuperar la contraseña. Esta pregunta requiere consola interactiva; el validador solo puede comprobar que root tiene una contraseña utilizable.",
     "source": "Pregunta 15 del documento"
   },
   {

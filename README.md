@@ -9,7 +9,7 @@ Laboratorio local para practicar tareas tipo RHCSA sobre Rocky Linux 10. El repo
 - La sesión dura 3 horas. La hora límite se calcula también en el servidor local.
 - Las comprobaciones actuales evalúan el estado final de la máquina. Las tareas interactivas de recuperación del arranque se resuelven desde la consola del hipervisor; se comprueba después el estado de la contraseña de root.
 - Una tercera VM, `gateway`, proporciona DNS, NTP, NFS, un proxy/caché para los repositorios Rocky Linux 10 y un registro OCI local con la imagen base del ejercicio de contenedores.
-- El gateway también sirve los archivos de construcción del ejercicio y ofrece una cuenta `student` para iniciar una sesión SSH interactiva y conectarse a `node1`/`node2`.
+- El gateway también sirve los archivos de construcción del ejercicio y ofrece una cuenta `student` para iniciar una sesión SSH interactiva en `node1`.
 - Los servicios de dependencias requieren conectividad a Internet durante el aprovisionamiento inicial y para descargar paquetes que no estén en la caché; no es un mirror ISO offline completo.
 
 ## Requisitos
@@ -69,10 +69,15 @@ Para trabajar desde la pasarela:
 vagrant ssh gateway
 sudo -iu student
 ssh node1
-# o: ssh node2
 ```
 
-La cuenta de práctica es `student` con contraseña `redhat`; el acceso por contraseña SSH solo se permite desde la red privada del laboratorio. Para practicar directamente, entra al nodo con Vagrant y cambia de usuario mediante `sudo -iu student`; la cuenta administrada por Vagrant mantiene el acceso SSH y el sudo de laboratorio.
+La cuenta de práctica `student` con contraseña inicial `redhat` y acceso SSH por contraseña desde la red privada está habilitada en node1. En node2, `student` permanece bloqueado y no tiene sudo: la recuperación de root debe hacerse desde la consola de la VM, sin saltarse el ejercicio por SSH. El acceso SSH directo de root está deshabilitado; después de recuperar la contraseña, inicia sesión como root en la consola. Para otras tareas de node2, el anfitrión conserva el acceso administrativo mediante Vagrant. Para practicar directamente en node1, entra mediante Vagrant y usa `sudo -iu student`.
+
+Si node1 rechaza la contraseña de `student`, repara ese acceso sin reprovisionar los ejercicios:
+
+```bash
+vagrant provision node1 --provision-with lab-access
+```
 
 El gateway sirve el archivo de repositorios de ejemplo en `http://content.example.com/repos/ex200.repo`. Los nombres `classroom.example.com`, `content.example.com` y `registry.lab.example.com` solo se resuelven desde la red privada del laboratorio.
 

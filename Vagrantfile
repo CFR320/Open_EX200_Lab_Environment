@@ -43,6 +43,10 @@ Vagrant.configure("2") do |config|
       else
         machine.vm.provision "shell", name: "base", path: "provision/base.sh"
         machine.vm.provision "shell",
+          name: "lab-access",
+          path: "provision/lab-access.sh",
+          run: "always"
+        machine.vm.provision "shell",
           name: "lab-network",
           path: "provision/lab-network.sh",
           run: "always"

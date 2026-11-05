@@ -12,18 +12,10 @@ location = "registry.lab.example.com:5000"
 insecure = true
 REGISTRY
 
-printf '%s\n' 'student:redhat' | chpasswd
-cat > /etc/ssh/sshd_config.d/60-ex200-lab.conf <<'SSH'
-Match Address 172.25.250.0/24
-    PasswordAuthentication yes
-SSH
-sshd -t
-systemctl enable --now sshd
 systemctl enable --now chronyd
 systemctl enable --now crond
 systemctl enable --now firewalld
 systemctl enable --now tuned
-systemctl reload sshd
 
 if [[ "$(hostname -s)" == "node1" ]]; then
   if ! id remoteuser6 >/dev/null 2>&1; then
@@ -35,15 +27,16 @@ fi
 mkdir -p /var/www/html
 printf '%s\n' 'EX200 practice web server' > /var/www/html/index.html
 
-if ! id student >/dev/null 2>&1; then
-  useradd --create-home student
-fi
-echo 'student ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/student
-chmod 0440 /etc/sudoers.d/student
-
 if [[ "$(hostname -s)" == "node2" ]]; then
   passwd --lock root
   tuned-adm profile balanced
+else
+  if ! id student >/dev/null 2>&1; then
+    useradd --create-home student
+  fi
+  printf '%s\n' 'student:redhat' | chpasswd
+  echo 'student ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/student
+  chmod 0440 /etc/sudoers.d/student
 fi
 
 dnf clean all

@@ -58,7 +58,7 @@ Las cinco preguntas con cero puntos en esta ejecución fueron 1, 7, 8, 13 y 14. 
 | CHECK-02 | NFS | Acceso al home produce un montaje NFS real | NFSv4 y permisos UID 2006 aprobados; autofs del examen pendiente |
 | CHECK-03 | Chrony | Fuente classroom resuelta y visible en `chronyc sources -n` | DNS y respuesta NTP aprobados; configuración persistente y prueba del corrector pendientes |
 | CHECK-04 | Contenedores | Imagen, unidad systemd de usuario y persistencia tras reinicio | Login, build rootless y PDF aprobados; unidad systemd de usuario pendiente |
-| CHECK-05 | Recuperación de root | Recuperar desde la consola del hipervisor y volver a iniciar por SSH | Pendiente de comprobación manual |
+| CHECK-05 | Recuperación de root | Recuperar desde la consola del hipervisor y confirmar el inicio local de root; SSH de student/root no está habilitado en node2 | Pendiente de comprobación manual |
 
 ## Verificación posterior de aprovisionamiento (2026-11-05)
 
@@ -67,6 +67,7 @@ Las cinco preguntas con cero puntos en esta ejecución fueron 1, 7, 8, 13 y 14. 
 - `lab-network` no encontraba la NIC NAT si la ruta por defecto inicial estaba en la interfaz del laboratorio. Ahora identifica la otra conexión activa y configura correctamente ambos nodos.
 - `lab-network` se ejecuta en cada `vagrant up` y `vagrant reload`, porque Vagrant puede restablecer las conexiones de red al reconfigurar las NIC. Se comprobó con recargas normales de ambos nodos sin reprovisionar `base`.
 - En node2, el menú de GRUB se mantiene visible 60 segundos para editar la entrada del kernel durante la recuperación de root. La configuración generada pasó `grub2-script-check` y persistió tras una recarga normal; los seis validadores de node2 siguieron aprobados.
+- Para preservar Q15, `student` está bloqueado y sin sudo en node2; el SSH desde gateway como `student` y el SSH directo como root se rechazan. El acceso administrativo por Vagrant sigue disponible para aprovisionamiento y corrección. Tras aplicar esta política, node2 mantuvo sus seis validadores aprobados sin cambiar el estado de la contraseña de root.
 - Después de las recargas, pasaron DNS para `classroom.example.com` y `registry.lab.example.com`, el health endpoint del gateway, los metadatos BaseOS/AppStream, y el automontaje NFS. Los validadores dieron 15/19 en node1 y 6/6 en node2; las fallas restantes corresponden a Chrony, los ejercicios de contenedor y ACL aún no resueltos.
 - VMware y Hyper-V siguen pendientes: esta verificación solo pudo ejecutarse con VirtualBox en Linux.
 
