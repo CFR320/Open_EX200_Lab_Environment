@@ -1,6 +1,6 @@
 # Laboratorio de práctica EX200
 
-Laboratorio local para practicar tareas tipo RHCSA sobre Rocky Linux 10. El repositorio incluye una interfaz web, un pool de preguntas tomado del documento de referencia y validaciones de solo lectura ejecutadas por SSH en dos nodos de examen.
+Laboratorio local para practicar tareas tipo RHCSA sobre AlmaLinux 10. El repositorio incluye una interfaz web, un pool de preguntas tomado del documento de referencia y validaciones de solo lectura ejecutadas por SSH en dos nodos de examen.
 
 ## Alcance de esta primera versión
 
@@ -8,19 +8,19 @@ Laboratorio local para practicar tareas tipo RHCSA sobre Rocky Linux 10. El repo
 - Cada pregunta vale 12,5 puntos; la puntuación máxima es 300 y se aprueba desde 210.
 - La sesión dura 3 horas. La hora límite se calcula también en el servidor local.
 - Las comprobaciones actuales evalúan el estado final de la máquina. Las tareas interactivas de recuperación del arranque se resuelven desde la consola del hipervisor; se comprueba después el estado de la contraseña de root.
-- Una tercera VM, `gateway`, proporciona DNS, NTP, NFS, un proxy/caché para los repositorios Rocky Linux 10 y un registro OCI local con la imagen base del ejercicio de contenedores.
+- Una tercera VM, `gateway`, proporciona DNS, NTP, NFS, un proxy/caché para los repositorios AlmaLinux 10 y un registro OCI local con la imagen base del ejercicio de contenedores.
 - El gateway también sirve los archivos de construcción del ejercicio y ofrece una cuenta `student` para iniciar una sesión SSH interactiva en `node1`.
 - Los servicios de dependencias requieren conectividad a Internet durante el aprovisionamiento inicial y para descargar paquetes que no estén en la caché; no es un mirror ISO offline completo.
 
 ## Requisitos
 
 - Linux, macOS o Windows con WSL2.
-- VirtualBox, VMware Workstation/Fusion o Hyper-V.
-- Vagrant 2.4.9 o posterior y la caja `bento/rockylinux-10`.
+- VirtualBox o VMware Workstation/Fusion.
+- Vagrant 2.4.9 o posterior y la caja oficial `almalinux/10`.
 - Python 3.9 o posterior, OpenSSH y conectividad para descargar la caja y los paquetes iniciales.
 - 8 GB de RAM para las VMs (2 + 3 + 3 GB), además de memoria para el sistema anfitrión, y espacio para tres VMs.
 
-Vagrant necesita el proveedor/plugin correspondiente. En Hyper-V, crea o selecciona el conmutador virtual que Vagrant solicite. Para VMware, instala el plugin de proveedor de Vagrant VMware. La caja `bento/rockylinux-10` publica proveedores VMware y VirtualBox, pero no Hyper-V. La configuración de VMware limita el hardware virtual a la versión 19 para mantener compatibilidad con VMware Workstation 16.2.5 y elimina en `node2` una entrada `redo` vacía de la caja que impide al plugin adjuntar el disco de práctica.
+Vagrant necesita el proveedor/plugin correspondiente. La caja oficial `almalinux/10` publica proveedores Hyper-V, VMware y VirtualBox. En Hyper-V, el anfitrión debe tener habilitado el proveedor y el conmutador `Default Switch`. El primer arranque crea también un conmutador interno `ex200-lab` y una segunda interfaz por VM para la red aislada del laboratorio; ejecuta Vagrant con permisos que permitan administrar Hyper-V. La primera ejecución descarga una caja específica de ese proveedor. Para VMware, instala el plugin de proveedor de Vagrant VMware. La configuración de VMware limita el hardware virtual a la versión 19 para mantener compatibilidad con VMware Workstation 16.2.5.
 
 En VirtualBox, el tráfico privado de los nodos usa una red interna aislada del anfitrión; SSH desde el anfitrión sigue disponible mediante los puertos NAT que administra Vagrant. Así se evita depender de los rangos host-only permitidos por la configuración local de VirtualBox.
 
@@ -34,7 +34,7 @@ vagrant up --provider=virtualbox
 # o: vagrant up --provider=hyperv
 ```
 
-La primera ejecución descarga Rocky Linux, instala las herramientas usadas por las preguntas y puede tardar varios minutos. Para desplegar primero la pasarela y ver sus errores por separado:
+La primera ejecución descarga AlmaLinux, instala las herramientas usadas por las preguntas y puede tardar varios minutos. Para desplegar primero la pasarela y ver sus errores por separado:
 
 ```bash
 vagrant up gateway --provider=virtualbox
@@ -93,6 +93,8 @@ Al finalizar el intento, el servidor se conecta por SSH a cada nodo y ejecuta ve
 
 ## Gestión de máquinas
 
+El cambio desde la caja Rocky Linux no convierte las VMs existentes: antes de usar AlmaLinux, guarda fuera de las VMs cualquier dato que quieras conservar, destruye las máquinas anteriores y créalas de nuevo con el proveedor elegido.
+
 ```bash
 vagrant status
 vagrant halt
@@ -109,7 +111,9 @@ vagrant destroy
 - `server.py`: API local, selección aleatoria, cronómetro de servidor y puntuación.
 - `static/`: frontend.
 - `provision/base.sh`: configuración inicial común de los nodos de examen.
+- `provision/lab-interface.sh`: asignación de la dirección fija en la segunda interfaz de red.
 - `provision/lab-network.sh`: rutas, DNS y gateway compartidos de los nodos.
+- `vagrant/hyperv_network.rb` y `vagrant/hyperv_lab_network.ps1`: conmutador e interfaces adicionales para Hyper-V.
 - `gateway/provision.sh`: aprovisionamiento de DNS, NTP, NFS, proxy de repositorios y registro OCI.
 - `gateway/containers/`: fuentes del ejercicio de contenedores.
 - `RHCSA Exam 20-3-2024 T Translated.docx`: documento fuente.
@@ -123,7 +127,7 @@ python3 -m py_compile server.py checks.py
 
 ## Próximos pasos
 
-1. Validar el aprovisionamiento y los ejercicios de servicios compartidos en VMware y Hyper-V; las pruebas previas se han realizado con VirtualBox.
+1. Completar la validación funcional en VMware; Hyper-V ya se desplegó y pasó pruebas de conectividad, repositorios y servicios básicos.
 2. Ajustar tareas y validadores tras completar intentos con esta infraestructura.
 3. Completar la infraestructura de las preguntas bloqueadas según `PLAN_PRUEBAS_CORRECCION.md`.
 

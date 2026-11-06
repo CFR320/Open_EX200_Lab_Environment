@@ -12,7 +12,7 @@
     "number": 2,
     "node": "node1",
     "title": "Configurar repositorios de paquetes",
-    "prompt": "Configura repositorios BaseOS y AppStream persistentes y habilitados: http://content.example.com/rhel8.0/x86_64/dvd/BaseOS y http://content.example.com/rhel8.0/x86_64/dvd/AppStream. El gateway proxifica los repositorios Rocky Linux 10.",
+    "prompt": "Configura repositorios BaseOS y AppStream persistentes y habilitados: http://content.example.com/almalinux/10/BaseOS/x86_64/os y http://content.example.com/almalinux/10/AppStream/x86_64/os. El gateway proxifica los repositorios AlmaLinux 10.",
     "source": "Pregunta 2 del documento"
   },
   {
@@ -124,7 +124,7 @@
     "number": 16,
     "node": "node2",
     "title": "Configurar repositorios de paquetes",
-    "prompt": "Configura BaseOS y AppStream con http://content.example.com/rhel8.0/x86_64/dvd/BaseOS y http://content.example.com/rhel8.0/x86_64/dvd/AppStream. Comprueba que están habilitados.",
+    "prompt": "Configura BaseOS y AppStream con http://content.example.com/almalinux/10/BaseOS/x86_64/os y http://content.example.com/almalinux/10/AppStream/x86_64/os. Comprueba que están habilitados.",
     "source": "Pregunta 16 del documento"
   },
   {

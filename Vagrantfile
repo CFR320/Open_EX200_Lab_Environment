@@ -1,7 +1,8 @@
 require_relative "vagrant/vmware_compat"
+require_relative "vagrant/hyperv_network"
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "bento/rockylinux-10"
+  config.vm.box = "almalinux/10"
   config.vm.boot_timeout = 900
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
@@ -17,6 +18,7 @@ Vagrant.configure("2") do |config|
       machine.vm.network "private_network",
         ip: settings[:ip],
         netmask: "255.255.255.0",
+        bridge: "Default Switch",
         virtualbox__intnet: "ex200-lab"
 
       machine.vm.provider "virtualbox" do |provider|
@@ -37,6 +39,9 @@ Vagrant.configure("2") do |config|
 
       if name == "gateway"
         machine.vm.provision "file",
+          source: "provision/lab-interface.sh",
+          destination: "/tmp/ex200-lab-interface.sh"
+        machine.vm.provision "file",
           source: "gateway/containers/Containerfile",
           destination: "/tmp/ex200-Containerfile"
         machine.vm.provision "file",
@@ -44,6 +49,9 @@ Vagrant.configure("2") do |config|
           destination: "/tmp/ex200-worker.py"
         machine.vm.provision "shell", path: "gateway/provision.sh"
       else
+        machine.vm.provision "file",
+          source: "provision/lab-interface.sh",
+          destination: "/tmp/ex200-lab-interface.sh"
         machine.vm.provision "shell", name: "base", path: "provision/base.sh"
         machine.vm.provision "shell",
           name: "lab-access",

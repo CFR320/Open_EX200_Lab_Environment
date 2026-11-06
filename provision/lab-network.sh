@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+case "$(hostname -s)" in
+  node1) bash /tmp/ex200-lab-interface.sh 172.25.250.10 ;;
+  node2) bash /tmp/ex200-lab-interface.sh 172.25.250.11 ;;
+  *)
+    echo "Unexpected node hostname: $(hostname -s)" >&2
+    exit 1
+    ;;
+esac
+
 for attempt in $(seq 1 180); do
   if curl --fail --silent --max-time 2 http://172.25.250.254/health >/dev/null; then
     break

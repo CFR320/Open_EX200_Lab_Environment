@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash /tmp/ex200-lab-interface.sh 172.25.250.254
+
 dnf install -y \
   chrony dnsmasq firewalld httpd-tools nginx nfs-utils podman \
   policycoreutils-python-utils curl
@@ -49,7 +51,7 @@ systemctl enable --now dnsmasq
 systemctl restart dnsmasq
 
 cat > /etc/chrony.conf <<'CHRONY'
-pool 2.rocky.pool.ntp.org iburst
+pool 2.pool.ntp.org iburst
 driftfile /var/lib/chrony/drift
 makestep 1.0 3
 rtcsync
@@ -101,7 +103,7 @@ server {
     server_name content.example.com classroom.example.com registry.lab.example.com 172.25.250.254;
     resolver __EX200_DNS_RESOLVER__ ipv6=off valid=300s;
     resolver_timeout 10s;
-    proxy_cache_key "ex200-rocky10-v2:$scheme$request_method$host$request_uri";
+    proxy_cache_key "ex200-almalinux10-v1:$scheme$request_method$host$request_uri";
 
     location = /health {
         alias /var/www/ex200/health;
@@ -114,33 +116,33 @@ server {
 
     location = /repos/ex200.repo {
         default_type text/plain;
-        return 200 "[BaseOS]\nname=Rocky 10 BaseOS via EX200 gateway\nbaseurl=http://content.example.com/rhel8.0/x86_64/dvd/BaseOS\nenabled=1\ngpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10\n\n[AppStream]\nname=Rocky 10 AppStream via EX200 gateway\nbaseurl=http://content.example.com/rhel8.0/x86_64/dvd/AppStream\nenabled=1\ngpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10\n";
+        return 200 "[BaseOS]\nname=AlmaLinux 10 BaseOS via EX200 gateway\nbaseurl=http://content.example.com/almalinux/10/BaseOS/x86_64/os\nenabled=1\ngpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10\n\n[AppStream]\nname=AlmaLinux 10 AppStream via EX200 gateway\nbaseurl=http://content.example.com/almalinux/10/AppStream/x86_64/os\nenabled=1\ngpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10\n";
     }
 
-    location /rhel8.0/x86_64/dvd/BaseOS/ {
-        set $rocky_repository_host dl.rockylinux.org;
-        rewrite ^/rhel8\.0/x86_64/dvd/BaseOS/(.*)$ /pub/rocky/10/BaseOS/x86_64/os/$1 break;
+    location /almalinux/10/BaseOS/x86_64/os/ {
+        set $almalinux_repository_host repo.almalinux.org;
+        rewrite ^/almalinux/10/BaseOS/x86_64/os/(.*)$ /almalinux/10/BaseOS/x86_64/os/$1 break;
         proxy_cache ex200_repo;
         proxy_cache_lock on;
         proxy_cache_valid 200 302 7d;
         proxy_cache_valid 404 1m;
-        proxy_set_header Host dl.rockylinux.org;
+        proxy_set_header Host repo.almalinux.org;
         proxy_ssl_server_name on;
-        proxy_ssl_name dl.rockylinux.org;
-        proxy_pass https://$rocky_repository_host;
+        proxy_ssl_name repo.almalinux.org;
+        proxy_pass https://$almalinux_repository_host;
     }
 
-    location /rhel8.0/x86_64/dvd/AppStream/ {
-        set $rocky_repository_host dl.rockylinux.org;
-        rewrite ^/rhel8\.0/x86_64/dvd/AppStream/(.*)$ /pub/rocky/10/AppStream/x86_64/os/$1 break;
+    location /almalinux/10/AppStream/x86_64/os/ {
+        set $almalinux_repository_host repo.almalinux.org;
+        rewrite ^/almalinux/10/AppStream/x86_64/os/(.*)$ /almalinux/10/AppStream/x86_64/os/$1 break;
         proxy_cache ex200_repo;
         proxy_cache_lock on;
         proxy_cache_valid 200 302 7d;
         proxy_cache_valid 404 1m;
-        proxy_set_header Host dl.rockylinux.org;
+        proxy_set_header Host repo.almalinux.org;
         proxy_ssl_server_name on;
-        proxy_ssl_name dl.rockylinux.org;
-        proxy_pass https://$rocky_repository_host;
+        proxy_ssl_name repo.almalinux.org;
+        proxy_pass https://$almalinux_repository_host;
     }
 }
 NGINX
