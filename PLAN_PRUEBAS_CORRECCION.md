@@ -79,3 +79,14 @@ Las cinco preguntas con cero puntos en esta ejecución fueron 1, 7, 8, 13 y 14. 
 4. Repetir la validación de aprovisionamiento en VMware y Hyper-V cuando esos proveedores estén disponibles.
 
 No ejecutar `vagrant destroy` sobre estas VMs: contienen el estado resuelto de esta ejecución.
+
+## Simulación de despliegue VirtualBox (2026-11-08)
+
+- Entorno: Linux, VirtualBox 7.2.22, Vagrant 2.4.9, 4 CPU y 19 GiB de RAM. Vagrant descargó `almalinux/10` versión `10.2.20260914`; no fue necesario modificar la caja.
+- `vagrant up gateway --provider=virtualbox` terminó correctamente. Durante el arranque SSH registró varios `Connection reset`/desconexiones y reintentó hasta que la VM estuvo disponible. El aprovisionador completó; `dnsmasq`, `chronyd`, `nfs-server`, `nginx` y `ex200-registry` quedaron activos, `/health` devolvió `ok` y las exportaciones NFS estuvieron presentes.
+- Primer `vagrant up node1 node2 --provider=virtualbox`: `node1` terminó su aprovisionamiento. `node2` arrancó, pero el aprovisionador `base` falló tras agotar los reintentos para obtener el mirrorlist AppStream de AlmaLinux (curl 28/timeout). El diagnóstico mostró que su ruta por defecto inicial era `172.25.250.1` por la NIC interna, que no ofrece salida; la ruta NAT quedaba con menor prioridad. Desde esa ruta, la petición HTTPS al mirror expiró.
+- **Corrección aplicada:** se adelantó el provisionador `lab-network` respecto de `base` en `Vagrantfile`. Así la VM establece primero la ruta por `172.25.250.254` y el DNS del gateway, antes de que `dnf` descargue paquetes. Aplicar `lab-network` a `node2` cambió la ruta y la petición HTTPS al mirror pasó a devolver HTTP 200. Después, `vagrant provision node2` completó `base`, `lab-access` y `grub-recovery` sin destruir ni recrear la VM.
+- Verificación final: `vagrant validate` pasó; las tres VMs están `running`. En el gateway, los servicios y `/health` respondieron correctamente y `sudo exportfs -s` mostró ambas exportaciones. En ambos nodos, `chronyd`, `crond`, `firewalld` y `tuned` están activos; la consulta HTTP a `content.example.com/health` devolvió `ok`.
+- Avisos no bloqueantes: Vagrant reasignó automáticamente los puertos SSH del anfitrión a 2200/2201; `ALREADY_ENABLED: ssh` fue idempotente. El primer `exportfs -s` de verificación se ejecutó sin privilegios y devolvió permiso denegado; repetirlo con `sudo` confirmó las exportaciones activas.
+- `PYTHONPATH=. python3 tests/test_server.py`: 15 pruebas aprobadas. `python3 -m py_compile server.py tests/test_server.py`, `ruby -c Vagrantfile` y `git diff --check` pasaron.
+- Esta ejecución valida aprovisionamiento e infraestructura básica, no completa un intento de examen ni verifica consolas RDP/VNC. El Extension Pack presente en este host no dispone del módulo VRDE; VMware y Hyper-V no están disponibles para pruebas reales en este host Linux. Las tres VMs se dejaron encendidas.

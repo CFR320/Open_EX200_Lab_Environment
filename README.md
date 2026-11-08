@@ -81,15 +81,100 @@ El gateway sirve el archivo de repositorios de ejemplo en `http://content.exampl
 
 La pantalla/consola de cada VM en el hipervisor está disponible para recuperación de GRUB, contraseña o arranque. En node2, el menú de GRUB permanece visible durante 60 segundos para permitir editar la entrada del kernel con `e`; root empieza bloqueado y tuned usa inicialmente el perfil `balanced` para que esas tareas no aparezcan ya resueltas. El segundo disco de 2 GB se asigna a node2 para practicar swap y LVM; el nombre del dispositivo se debe confirmar con `lsblk` porque puede variar por proveedor.
 
-Inicia la interfaz y el validador en la máquina anfitriona:
+Inicia la API/validador en la máquina anfitriona (Vagrant y el proveedor nunca se ejecutan dentro del contenedor):
 
 ```bash
 python3 server.py
 ```
 
-Abre <http://127.0.0.1:8000>. Mantén el servidor ligado a localhost: la aplicación usa la configuración SSH de Vagrant y no implementa autenticación para acceso desde una red.
+En otra terminal, sirve la interfaz estática en un contenedor Docker o Podman:
+
+```bash
+docker compose up -d
+# o, sin Compose:
+podman run --rm --name ex200-web \
+  -p 127.0.0.1:8080:80 \
+  -v "$PWD/static:/usr/share/nginx/html:ro,Z" \
+  docker.io/library/nginx:stable-alpine
+```
+
+Para Docker sin SELinux, elimina el sufijo `,Z` del montaje. Abre <http://127.0.0.1:8080>. La página llama a la API del anfitrión en `http://127.0.0.1:8000`; CORS solo permite los orígenes localhost incluidos en `EX200_ALLOWED_ORIGINS`. No publiques esos puertos en la red: la API puede iniciar Vagrant o destruir las máquinas y no tiene autenticación.
+
+Desde la página puedes elegir el proveedor, desplegar las tres VMs y comenzar cuando estén encendidas. La opción **Reiniciar laboratorio e intento** destruye las tres VMs y sus discos, las crea de nuevo y selecciona otro conjunto aleatorio de preguntas. No la uses si necesitas conservar datos del laboratorio.
 
 Al finalizar el intento, el servidor se conecta por SSH a cada nodo y ejecuta verificadores locales de solo lectura como root. Si una máquina está apagada o no se puede conectar, la interfaz muestra un error y permite reintentar la corrección. La puntuación no se guarda entre reinicios del servidor.
+
+La interfaz solo contiene HTML, CSS y JavaScript: el contenedor Nginx no recibe sockets, credenciales ni acceso al hipervisor. La API sigue ligada a `127.0.0.1`, donde invoca Vagrant en el anfitrión.
+
+## Contenedores y consolas web
+
+El panel **Consolas de las máquinas** permite incrustar el cliente web configurado o abrirlo en una pestaña aparte. Define las URL según tu instalación; no pongas credenciales en ellas:
+
+```bash
+export EX200_CONSOLE_URLS='{
+  "virtualbox": {
+    "gateway": "http://127.0.0.1:8081/guacamole/",
+    "node1": "http://127.0.0.1:8081/guacamole/",
+    "node2": "http://127.0.0.1:8081/guacamole/"
+  },
+  "vmware_desktop": {
+    "gateway": "http://127.0.0.1:6081/vnc.html?autoconnect=1",
+    "node1": "http://127.0.0.1:6082/vnc.html?autoconnect=1",
+    "node2": "http://127.0.0.1:6083/vnc.html?autoconnect=1"
+  },
+  "hyperv": {
+    "gateway": "https://wac.example.test",
+    "node1": "https://wac.example.test",
+    "node2": "https://wac.example.test"
+  }
+}'
+python3 server.py
+```
+
+La pasarela debe poder acceder al endpoint del hipervisor. Los enlaces noVNC pueden ser distintos por VM; un enlace a la portada de Guacamole/WAC mostrará su selector/inventario y quizá requiera escoger la VM. Para VirtualBox/VMware la página intenta incrustar el cliente; si la pasarela bloquea la inserción en un marco, usa **Abrir consola web**. El cliente web de Guacamole y noVNC ofrecen controles de teclado, incluido el envío de teclas especiales/teclado virtual según protocolo; esta aplicación no envía pulsaciones por su cuenta.
+
+### VirtualBox
+
+VirtualBox ofrece VRDE/VRDP mediante Oracle Extension Pack; VRDP habla RDP y puede conectarse a través de Apache Guacamole. El paquete base no incluye el módulo VRDE en todas las distribuciones. Comprueba `VBoxManage list extpacks`; `VRDE Module` debe estar disponible. La documentación de [VirtualBox Remote Display](https://www.virtualbox.org/manual/ch07.html#vrde) especifica que está desactivado por defecto.
+
+Opta por habilitar la consola antes de iniciar la API:
+
+```bash
+export EX200_VBOX_VRDE=1
+export EX200_VBOX_VRDE_PASSWORD='una-frase-secreta-de-12-caracteres'
+python3 server.py
+```
+
+Vagrant asigna los puertos 5101-5103, limita VRDE a `127.0.0.1` y exige autenticación `VBoxAuthSimple` con usuario `ex200`. Puedes cambiar la dirección con `EX200_VBOX_VRDE_ADDRESS`; no la expongas a una red sin reglas de firewall y autenticación fuerte. El Extension Pack puede tener condiciones de licencia distintas a la edición base.
+
+### VMware
+
+El provider de Vagrant permite personalizar claves VMX ([documentación](https://developer.hashicorp.com/vagrant/docs/providers/vmware/configuration#vmx-customization)); VNC es una interfaz VMX específica de VMware, no una API estable de Vagrant. Para habilitarla:
+
+```bash
+export EX200_VMWARE_VNC_PASSWORD='VncPass8'
+python3 server.py
+```
+
+Se usan los puertos 5901-5903 y escucha en `127.0.0.1`; puedes ajustar la dirección mediante `EX200_VMWARE_VNC_ADDRESS`. VMware almacena la contraseña VNC en la configuración VMX, así que protege los archivos de `.vagrant`. Publica esas conexiones mediante noVNC/websockify o Guacamole. La contraseña VNC de VMware está limitada a 8 caracteres; se exigen ocho alfanuméricos para evitar problemas de escape en VMX. No uses esta opción en una red no confiable.
+
+Con noVNC instalado desde su repositorio, crea un proxy por máquina en el anfitrión (en terminales separadas):
+
+```bash
+./utils/novnc_proxy --vnc 127.0.0.1:5901 --listen 127.0.0.1:6081
+./utils/novnc_proxy --vnc 127.0.0.1:5902 --listen 127.0.0.1:6082
+./utils/novnc_proxy --vnc 127.0.0.1:5903 --listen 127.0.0.1:6083
+```
+
+La aplicación deja el cliente web de noVNC accesible en cada puerto indicado; en su barra de herramientas están el teclado virtual y las teclas especiales. Para VirtualBox, configura tres conexiones RDP en Guacamole hacia `127.0.0.1:5101`, `:5102` y `:5103`, usuario `ex200` y la contraseña de VRDE configurada arriba.
+
+Con los valores `127.0.0.1`, los proxies de consola deben correr directamente en el anfitrión. Si los ejecutas en contenedores, necesitarán una dirección del anfitrión alcanzable desde la red del contenedor. Cambiar a `0.0.0.0` facilita esa ruta, pero expone el servicio en todas las interfaces; hazlo solo con contraseña, firewall que limite origen/puerto y una red confiable. La consola web siempre debe quedar protegida por autenticación y publicarse solo en localhost.
+
+### Hyper-V
+
+Hyper-V no expone mediante Vagrant un stream de framebuffer estándar que esta aplicación pueda incrustar en una página. Windows Admin Center ofrece administración web del host y un flujo **Connect** para la VM, pero la documentación de Microsoft indica que la consola usa VMConnect/archivo RDP y un cliente RDP nativo, no una consola de navegador equivalente a Guacamole. El enlace configurado abre WAC; la consola de GRUB/arranque, Ctrl+Alt+Supr y el teclado virtual se manejan desde VMConnect/RDP en el anfitrión. Consulta [Manage Virtual Machines with Windows Admin Center](https://learn.microsoft.com/en-us/windows-server/manage/windows-admin-center/use/manage-virtual-machines).
+
+La integración de enlaces está disponible para los tres proveedores, pero la consola framebuffer embebida de Hyper-V no es viable de forma portable con la interfaz actual. No se instala XRDP dentro del guest como sustituto: eso mostraría un escritorio invitado separado y no la consola real de arranque/GRUB.
 
 ## Gestión de máquinas
 
@@ -109,6 +194,7 @@ vagrant destroy
 - `data/questions.json`: banco de preguntas y reparto por nodo.
 - `checks.py`: verificadores que se ejecutan dentro de las máquinas.
 - `server.py`: API local, selección aleatoria, cronómetro de servidor y puntuación.
+- `compose.yaml`: contenedor Nginx para publicar únicamente los archivos estáticos de `static/`.
 - `static/`: frontend.
 - `provision/base.sh`: configuración inicial común de los nodos de examen.
 - `provision/lab-interface.sh`: asignación de la dirección fija en la segunda interfaz de red.

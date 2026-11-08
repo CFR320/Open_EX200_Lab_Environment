@@ -1,5 +1,9 @@
+import json
+import threading
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 import server
 
@@ -77,6 +81,159 @@ class AttemptTests(unittest.TestCase):
             patch.object(server.subprocess, "run", return_value=completed),
         ):
             self.assertEqual(server.run_checks("node1", ["users-groups"]), {"users-groups": False})
+
+
+class LabOperationTests(unittest.TestCase):
+    def setUp(self):
+        self.previous_operation = {**server.LAB_OPERATION, "output": list(server.LAB_OPERATION["output"])}
+        server.LAB_OPERATION.update(
+            id="test-operation",
+            action="reset",
+            provider="virtualbox",
+            phase="starting",
+            running=True,
+            success=None,
+            error=None,
+            output=[],
+        )
+
+    def tearDown(self):
+        server.LAB_OPERATION.clear()
+        server.LAB_OPERATION.update(self.previous_operation)
+
+    def test_machine_states_parses_vagrant_machine_readable_output(self):
+        output = "\n".join(
+            [
+                "1,gateway,provider-name,virtualbox",
+                "1,gateway,state,running",
+                "1,node1,provider-name,virtualbox",
+                "1,node1,state,poweroff",
+                "1,node2,provider-name,virtualbox",
+                "1,node2,state,running",
+            ]
+        )
+        with patch.object(
+            server.subprocess,
+            "run",
+            return_value=server.subprocess.CompletedProcess([], 0, output, ""),
+        ):
+            states, provider = server.machine_status()
+        self.assertEqual(
+            states,
+            {"gateway": "running", "node1": "poweroff", "node2": "running"},
+        )
+        self.assertEqual(provider, "virtualbox")
+
+    def test_reset_destroys_then_deploys_with_selected_provider(self):
+        class FakeProcess:
+            stdout = iter(["Vagrant output\n"])
+
+            def __init__(self, *args, **kwargs):
+                self.args = args[0]
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def wait(self):
+                return 0
+
+        with patch.object(server.subprocess, "Popen", side_effect=FakeProcess) as popen:
+            server.run_lab_operation("test-operation", "reset", "hyperv")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [
+                [server.VAGRANT, "destroy", "-f"],
+                [server.VAGRANT, "up", "--provider=hyperv"],
+            ],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
+    def test_invalid_provider_is_rejected_before_starting_operation(self):
+        with self.assertRaises(ValueError):
+            server.start_lab_operation("deploy", [])
+        self.assertEqual(server.LAB_OPERATION["id"], "test-operation")
+
+    def test_console_urls_accept_only_web_urls_without_embedded_credentials(self):
+        configured = (
+            '{"virtualbox":{"node1":"http://127.0.0.1:8081/console"},'
+            '"hyperv":{"node2":"https://wac.example.test"}}'
+        )
+        with patch.dict("os.environ", {"EX200_CONSOLE_URLS": configured}):
+            self.assertEqual(
+                server.configured_console_urls(),
+                {
+                    "virtualbox": {"node1": "http://127.0.0.1:8081/console"},
+                    "hyperv": {"node2": "https://wac.example.test"},
+                },
+            )
+
+        invalid = '{"vmware_desktop":{"node1":"javascript:alert(1)"}}'
+        with patch.dict("os.environ", {"EX200_CONSOLE_URLS": invalid}):
+            with self.assertRaises(RuntimeError):
+                server.configured_console_urls()
+
+        credential_url = '{"hyperv":{"node1":"https://admin:secret@wac.example.test"}}'
+        with patch.dict("os.environ", {"EX200_CONSOLE_URLS": credential_url}):
+            with self.assertRaises(RuntimeError):
+                server.configured_console_urls()
+
+
+class WebApiTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.httpd = server.ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+        cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.base_url = f"http://127.0.0.1:{cls.httpd.server_port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+        cls.httpd.server_close()
+        cls.thread.join()
+
+    def test_allowed_frontend_origin_can_read_status_and_console_links(self):
+        origin = "http://127.0.0.1:8080"
+        with (
+            patch.object(
+                server,
+                "machine_status",
+                return_value=(
+                    {"gateway": "running", "node1": "running", "node2": "running"},
+                    "virtualbox",
+                ),
+            ),
+            patch.dict(
+                "os.environ",
+                {"EX200_CONSOLE_URLS": '{"virtualbox":{"node1":"http://127.0.0.1:8081/console"}}'},
+            ),
+        ):
+            request = Request(f"{self.base_url}/api/lab/status", headers={"Origin": origin})
+            with urlopen(request, timeout=5) as response:
+                body = json.load(response)
+                self.assertEqual(response.headers["Access-Control-Allow-Origin"], origin)
+        self.assertTrue(body["ready"])
+        self.assertEqual(body["consoles"]["node1"], "http://127.0.0.1:8081/console")
+
+    def test_untrusted_web_origin_cannot_start_lab_operations(self):
+        request = Request(
+            f"{self.base_url}/api/lab/reset",
+            data=b'{"provider":"virtualbox"}',
+            headers={
+                "Origin": "https://untrusted.example",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(request, timeout=5)
+        raised.exception.close()
+        self.assertEqual(raised.exception.code, 403)
 
 
 if __name__ == "__main__":

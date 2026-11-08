@@ -18,12 +18,36 @@
       <h1>Prepara tu intento</h1>
       <p>Cada intento incluye las 20 preguntas principales y 4 preguntas adicionales seleccionadas al azar. Dispones de 3 horas y la puntuación máxima es 300 puntos; se aprueba con 210.</p>
       <ul class="requirements">
-        <li>Inicia las máquinas con <code>vagrant up</code> antes de comenzar.</li>
+        <li>Despliega las tres máquinas desde esta página antes de comenzar.</li>
         <li>Resuelve los ejercicios por SSH o desde la consola del hipervisor.</li>
         <li>Al finalizar, se comprobarán las configuraciones en ambas máquinas.</li>
       </ul>
-      <button id="start" class="button primary">Comenzar intento</button>
+      <div class="deploy-panel">
+        <label for="provider">Proveedor de virtualización</label>
+        <div class="deploy-controls">
+          <select id="provider" class="provider">
+            <option value="virtualbox">VirtualBox</option>
+            <option value="vmware_desktop">VMware</option>
+            <option value="hyperv">Hyper-V</option>
+          </select>
+          <button id="deploy" class="button secondary">Iniciar despliegue</button>
+        </div>
+        <p id="lab-status" class="lab-status" role="status" aria-live="polite">Comprobando las máquinas…</p>
+        <details id="lab-log" hidden>
+          <summary>Registro de la operación</summary>
+          <pre id="lab-output"></pre>
+        </details>
+      </div>
+      <button id="start" class="button primary" disabled>Comenzar intento</button>
       <p id="start-error" class="error" role="alert"></p>
+    </section>
+
+    <section id="console-panel" class="console-panel panel" hidden>
+      <p class="eyebrow">CONSOLA DEL HIPERVISOR</p>
+      <h2>Consolas de las máquinas</h2>
+      <p id="console-help" class="muted"></p>
+      <div id="console-list" class="console-list"></div>
+      <p id="console-config-error" class="error" role="alert"></p>
     </section>
 
     <section id="exam" hidden>
@@ -32,7 +56,10 @@
           <p class="eyebrow">INTENTO EN CURSO</p>
           <h1>Preguntas del examen</h1>
         </div>
-        <button id="finish" class="button danger">Finalizar y corregir</button>
+        <div class="exam-actions">
+          <button id="reset" class="button secondary">Reiniciar laboratorio e intento</button>
+          <button id="finish" class="button danger">Finalizar y corregir</button>
+        </div>
       </div>
       <p id="exam-status" class="muted"></p>
       <nav id="node-tabs" class="node-tabs" aria-label="Filtrar por máquina"></nav>
@@ -45,7 +72,7 @@
       <p id="score" class="score"></p>
       <p id="result-message"></p>
       <div id="result-details" class="result-details"></div>
-      <button id="again" class="button primary">Nuevo intento</button>
+      <button id="again" class="button primary">Reiniciar laboratorio e iniciar otro intento</button>
     </section>
   </main>
   <div id="toast" class="toast" role="alert" hidden></div>
