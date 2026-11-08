@@ -171,6 +171,32 @@ class LabOperationTests(unittest.TestCase):
         self.assertFalse(server.LAB_OPERATION["running"])
         self.assertTrue(server.LAB_OPERATION["success"])
 
+    def test_vmware_destroy_removes_machines_sequentially_without_deploying(self):
+        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+            server.run_lab_operation("test-operation", "destroy", "vmware_desktop")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [
+                [server.VAGRANT, "destroy", "-f", "gateway"],
+                [server.VAGRANT, "destroy", "-f", "node1"],
+                [server.VAGRANT, "destroy", "-f", "node2"],
+            ],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
+    def test_destroy_removes_all_machines_with_selected_provider(self):
+        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+            server.run_lab_operation("test-operation", "destroy", "hyperv")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [[server.VAGRANT, "destroy", "-f"]],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
     def test_reset_destroys_then_deploys_with_selected_provider(self):
         with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
             server.run_lab_operation("test-operation", "reset", "hyperv")
@@ -189,6 +215,14 @@ class LabOperationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             server.start_lab_operation("deploy", [])
         self.assertEqual(server.LAB_OPERATION["id"], "test-operation")
+
+    def test_destroy_operation_is_accepted(self):
+        server.LAB_OPERATION["running"] = False
+        with patch.object(server.threading.Thread, "start"):
+            operation = server.start_lab_operation("destroy", "vmware_desktop")
+
+        self.assertEqual(operation["action"], "destroy")
+        self.assertTrue(operation["running"])
 
     def test_console_urls_accept_only_web_urls_without_embedded_credentials(self):
         configured = (

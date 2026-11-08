@@ -10,6 +10,10 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/">EX200 <span>LAB</span></a>
+    <div class="topbar-actions">
+      <button id="reset-lab" class="button secondary">Restablecer laboratorio</button>
+      <button id="delete-lab" class="button danger">Eliminar laboratorio</button>
+    </div>
     <div id="timer" class="timer" aria-live="polite" hidden>03:00:00</div>
   </header>
   <main>
@@ -57,7 +61,6 @@
           <h1>Preguntas del examen</h1>
         </div>
         <div class="exam-actions">
-          <button id="reset" class="button secondary">Reiniciar laboratorio e intento</button>
           <button id="finish" class="button danger">Finalizar y corregir</button>
         </div>
       </div>

@@ -295,22 +295,22 @@ def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
     if provider == "vmware_desktop":
         machines = ("gateway", "node1", "node2")
         commands = []
-        if action == "reset":
+        if action in {"reset", "destroy"}:
             commands.extend(
                 (f"Restableciendo {machine}", ["destroy", "-f", machine])
                 for machine in machines
             )
-        commands.extend(
-            (f"Desplegando {machine}", ["up", machine, f"--provider={provider}"])
-            for machine in machines
-        )
+        if action != "destroy":
+            commands.extend(
+                (f"Desplegando {machine}", ["up", machine, f"--provider={provider}"])
+                for machine in machines
+            )
     else:
-        commands = (
-            [("Restableciendo máquinas", ["destroy", "-f"]),
-             ("Desplegando máquinas", ["up", f"--provider={provider}"])]
-            if action == "reset"
-            else [("Desplegando máquinas", ["up", f"--provider={provider}"])]
-        )
+        commands = []
+        if action in {"reset", "destroy"}:
+            commands.append(("Eliminando máquinas", ["destroy", "-f"]))
+        if action != "destroy":
+            commands.append(("Desplegando máquinas", ["up", f"--provider={provider}"]))
     try:
         for phase, arguments in commands:
             with LAB_LOCK:
@@ -345,7 +345,7 @@ def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
 
 
 def start_lab_operation(action: str, provider: str) -> dict[str, Any]:
-    if action not in {"deploy", "reset"}:
+    if action not in {"deploy", "reset", "destroy"}:
         raise ValueError("Operación de laboratorio no válida.")
     if not isinstance(provider, str) or provider not in PROVIDERS:
         raise ValueError("Proveedor no válido.")
@@ -353,7 +353,7 @@ def start_lab_operation(action: str, provider: str) -> dict[str, Any]:
     with LAB_LOCK:
         if LAB_OPERATION["running"]:
             raise RuntimeError("Ya hay una operación del laboratorio en curso.")
-        if action == "reset":
+        if action in {"reset", "destroy"}:
             with ATTEMPTS_LOCK:
                 if any(attempt["grading"] for attempt in ATTEMPTS.values()):
                     raise RuntimeError("No se puede reiniciar el laboratorio mientras se corrige un intento.")
@@ -473,11 +473,11 @@ class Handler(BaseHTTPRequestHandler):
         if not self._origin_allowed():
             return
         path = urlparse(self.path).path
-        if path in {"/api/lab/deploy", "/api/lab/reset"}:
+        if path in {"/api/lab/deploy", "/api/lab/reset", "/api/lab/destroy"}:
             try:
                 body = self._read_json()
                 operation = start_lab_operation(
-                    "reset" if path.endswith("/reset") else "deploy",
+                    urlparse(path).path.rsplit("/", 1)[-1],
                     body.get("provider", ""),
                 )
             except ValueError as error:

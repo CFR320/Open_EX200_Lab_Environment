@@ -107,7 +107,7 @@ podman run --rm --name ex200-web \
 
 Para Docker sin SELinux, elimina el sufijo `,Z` del montaje. Abre <http://127.0.0.1:8080>. La página llama a la API del anfitrión en `http://127.0.0.1:8000`; CORS solo permite los orígenes localhost incluidos en `EX200_ALLOWED_ORIGINS`. No publiques esos puertos en la red: la API puede iniciar Vagrant o destruir las máquinas y no tiene autenticación.
 
-Desde la página puedes elegir el proveedor, desplegar las tres VMs y comenzar cuando estén encendidas. La opción **Reiniciar laboratorio e intento** destruye las tres VMs y sus discos, las crea de nuevo y selecciona otro conjunto aleatorio de preguntas. No la uses si necesitas conservar datos del laboratorio.
+Desde la página puedes elegir el proveedor, desplegar las tres VMs y comenzar cuando estén encendidas. **Restablecer laboratorio** destruye las tres VMs y sus discos y vuelve a desplegar un laboratorio limpio. **Eliminar laboratorio** destruye las VMs y deja el laboratorio apagado y sin desplegar. Ambas acciones eliminan los datos guardados en los discos virtuales; no las uses si necesitas conservarlos. Después de restablecer, inicia el intento manualmente cuando el laboratorio esté listo.
 
 Al finalizar el intento, el servidor se conecta por SSH a cada nodo y ejecuta verificadores locales de solo lectura como root. Si una máquina está apagada o no se puede conectar, la interfaz muestra un error y permite reintentar la corrección. La puntuación no se guarda entre reinicios del servidor.
 

@@ -210,8 +210,12 @@ for attempt in $(seq 1 60); do
 done
 
 podman tag docker.io/library/python:3.13-alpine localhost:5000/python:3.13-alpine
-podman login --tls-verify=false --username student --password redhat localhost:5000
-podman push --tls-verify=false localhost:5000/python:3.13-alpine
+registry_auth_file=$(mktemp /run/ex200-registry-auth.XXXXXX)
+trap 'rm -f "$registry_auth_file"' EXIT
+podman login --authfile "$registry_auth_file" --tls-verify=false \
+  --username student --password redhat localhost:5000
+podman push --authfile "$registry_auth_file" --tls-verify=false \
+  localhost:5000/python:3.13-alpine
 
 nat_device=$(ip -4 route show default | awk 'NR == 1 {for (i = 1; i <= NF; i++) if ($i == "dev") print $(i + 1)}')
 lab_device=$(ip -o -4 address show | awk '$4 ~ /^172\.25\.250\.254\// {print $2; exit}')

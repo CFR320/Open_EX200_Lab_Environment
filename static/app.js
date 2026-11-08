@@ -16,6 +16,8 @@ let timerHandle = null;
 let submitting = false;
 let pollingLab = false;
 let pendingResetOperation = null;
+let pendingResetStartsAttempt = false;
+let currentLabProvider = null;
 let consoleRenderKey = null;
 
 async function request(path, options = {}) {
@@ -39,6 +41,7 @@ function updateLabControls(status) {
   const start = document.querySelector("#start");
   const busy = status.running;
   const machines = status.machines || {};
+  currentLabProvider = status.provider || currentLabProvider;
   const machineSummary = ["gateway", "node1", "node2"]
     .map((name) => `${name}: ${machines[name] || "desconocido"}`)
     .join(" · ");
@@ -46,7 +49,8 @@ function updateLabControls(status) {
   provider.disabled = busy;
   deploy.disabled = busy;
   start.disabled = busy || !status.ready;
-  document.querySelector("#reset").disabled = busy;
+  document.querySelector("#reset-lab").disabled = busy;
+  document.querySelector("#delete-lab").disabled = busy;
   document.querySelector("#again").disabled = busy;
 
   const statusText = document.querySelector("#lab-status");
@@ -156,11 +160,14 @@ async function pollLabStatus() {
     if (pendingResetOperation && status.id === pendingResetOperation && !status.running) {
       pendingResetOperation = null;
       if (status.success && status.ready) {
-        await startAttempt();
+        if (pendingResetStartsAttempt) await startAttempt();
       } else {
-        document.querySelector("#start-error").textContent =
-          status.error || status.status_error || "El laboratorio no quedó listo tras el reinicio.";
+        if (!status.success) {
+          document.querySelector("#start-error").textContent =
+            status.error || status.status_error || "No se pudo completar la operación del laboratorio.";
+        }
       }
+      pendingResetStartsAttempt = false;
     }
   } catch (error) {
     document.querySelector("#lab-status").textContent = `No se pudo consultar el laboratorio: ${error.message}`;
@@ -169,34 +176,50 @@ async function pollLabStatus() {
   }
 }
 
-async function beginLabOperation(action, onAccepted = () => {}) {
-  const provider = document.querySelector("#provider").value;
+async function beginLabOperation(action, { startAttemptAfterReset = false } = {}) {
+  const provider = action === "destroy"
+    ? currentLabProvider || document.querySelector("#provider").value
+    : document.querySelector("#provider").value;
   const status = await request(`/api/lab/${action}`, {
     method: "POST",
     body: JSON.stringify({ provider }),
   });
-  pendingResetOperation = action === "reset" ? status.id : null;
-  onAccepted();
+  pendingResetOperation = action === "reset" || action === "destroy" ? status.id : null;
+  pendingResetStartsAttempt = startAttemptAfterReset;
+  if (action === "reset" || action === "destroy") {
+    clearInterval(timerHandle);
+    attempt = null;
+    submitting = false;
+    welcome.hidden = false;
+    exam.hidden = true;
+    results.hidden = true;
+    timer.hidden = true;
+    document.querySelector("#start-error").textContent = "";
+  }
   await pollLabStatus();
 }
 
-async function resetLab() {
+async function resetLab({ startAttemptAfterReset = false } = {}) {
   if (!window.confirm(
     "Se destruirán las tres máquinas virtuales y se borrarán sus discos y datos. " +
-    "Después se desplegará un laboratorio limpio y se sortearán nuevas preguntas. ¿Continuar?"
+    "Después se desplegará un laboratorio limpio. ¿Continuar?"
   )) return;
 
   try {
-    await beginLabOperation("reset", () => {
-      clearInterval(timerHandle);
-      attempt = null;
-      submitting = false;
-      welcome.hidden = false;
-      exam.hidden = true;
-      results.hidden = true;
-      timer.hidden = true;
-      document.querySelector("#start-error").textContent = "";
-    });
+    await beginLabOperation("reset", { startAttemptAfterReset });
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function deleteLab() {
+  if (!window.confirm(
+    "Se apagarán y eliminarán las máquinas virtuales del laboratorio, incluidos sus discos y datos. " +
+    "No se volverán a desplegar. ¿Continuar?"
+  )) return;
+
+  try {
+    await beginLabOperation("destroy");
   } catch (error) {
     showToast(error.message);
   }
@@ -335,9 +358,10 @@ document.querySelector("#deploy").addEventListener("click", async () => {
     document.querySelector("#start-error").textContent = error.message;
   }
 });
-document.querySelector("#reset").addEventListener("click", resetLab);
+document.querySelector("#reset-lab").addEventListener("click", resetLab);
+document.querySelector("#delete-lab").addEventListener("click", deleteLab);
 document.querySelector("#finish").addEventListener("click", finishAttempt);
-document.querySelector("#again").addEventListener("click", resetLab);
+document.querySelector("#again").addEventListener("click", () => resetLab({ startAttemptAfterReset: true }));
 
 pollLabStatus();
 window.setInterval(pollLabStatus, 3000);
