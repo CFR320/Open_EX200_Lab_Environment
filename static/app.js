@@ -83,7 +83,7 @@ function renderConsoles(status) {
   document.querySelector("#console-help").textContent = provider === "hyperv"
     ? "Hyper-V no expone una consola de framebuffer web estándar. El enlace abre Windows Admin Center si se ha configurado; para GRUB y arranque se necesita VMConnect/RDP desde el anfitrión."
     : provider === "virtualbox"
-      ? "VirtualBox usa VRDE/RDP (requiere Oracle Extension Pack y Apache Guacamole para navegador). En Guacamole/noVNC, los controles de teclado dependen de la conexión."
+      ? "VirtualBox usa VRDE/RDP; requiere un Extension Pack compatible que incluya el módulo VRDE y Apache Guacamole para navegador. En Guacamole/noVNC, los controles de teclado dependen de la conexión."
       : "VMware usa VNC por máquina. Configura noVNC o Apache Guacamole para abrir cada pantalla y enviar teclas especiales.";
 
   const list = document.querySelector("#console-list");

@@ -135,7 +135,11 @@ La pasarela debe poder acceder al endpoint del hipervisor. Los enlaces noVNC pue
 
 ### VirtualBox
 
-VirtualBox ofrece VRDE/VRDP mediante Oracle Extension Pack; VRDP habla RDP y puede conectarse a través de Apache Guacamole. El paquete base no incluye el módulo VRDE en todas las distribuciones. Comprueba `VBoxManage list extpacks`; `VRDE Module` debe estar disponible. La documentación de [VirtualBox Remote Display](https://www.virtualbox.org/manual/ch07.html#vrde) especifica que está desactivado por defecto.
+VirtualBox ofrece VRDE/VRDP mediante un Oracle Extension Pack compatible que incluya el módulo VRDE; VRDP habla RDP y puede conectarse a través de Apache Guacamole. Comprueba `VBoxManage list extpacks`; `VRDE Module` debe indicar el módulo. La documentación de [VirtualBox Remote Display](https://www.virtualbox.org/manual/ch07.html#vrde) especifica que está desactivado por defecto.
+
+**Limitación comprobada en VirtualBox 7.2.22:** el Extension Pack oficial 7.2.22 disponible para este host solo declara integración OCI y PXE; no contiene `VBoxVRDP` ni declara `VRDEModule`. El Extension Pack oficial 7.1.10 sí incluye `VBoxVRDP`, pero no se debe instalar sobre VirtualBox 7.2.22: el paquete debe coincidir con la versión del hipervisor. Para usar VRDE en este host habría que cambiar VirtualBox y el Extension Pack a una combinación compatible que incluya ese módulo. Se inspeccionaron los paquetes oficiales sin instalarlos ni aceptar su licencia.
+
+El intento de downgrade en Fedora 45 quedó bloqueado antes de instalar nada: el RPMFusion VirtualBox 7.1.6 para Fedora 42 necesita `libvpx.so.9`, ausente en Fedora 45, que aporta `libvpx.so.12`. No fuerces el paquete ni sustituyas la biblioteca del sistema para salvar esta dependencia; busca una compilación mantenida para la versión exacta de Fedora o usa otro host compatible.
 
 Opta por habilitar la consola antes de iniciar la API:
 
