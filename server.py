@@ -292,12 +292,25 @@ def append_lab_output(line: str) -> None:
 
 
 def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
-    commands = (
-        [("Restableciendo máquinas", ["destroy", "-f"]),
-         ("Desplegando máquinas", ["up", f"--provider={provider}"])]
-        if action == "reset"
-        else [("Desplegando máquinas", ["up", f"--provider={provider}"])]
-    )
+    if provider == "vmware_desktop":
+        machines = ("gateway", "node1", "node2")
+        commands = []
+        if action == "reset":
+            commands.extend(
+                (f"Restableciendo {machine}", ["destroy", "-f", machine])
+                for machine in machines
+            )
+        commands.extend(
+            (f"Desplegando {machine}", ["up", machine, f"--provider={provider}"])
+            for machine in machines
+        )
+    else:
+        commands = (
+            [("Restableciendo máquinas", ["destroy", "-f"]),
+             ("Desplegando máquinas", ["up", f"--provider={provider}"])]
+            if action == "reset"
+            else [("Desplegando máquinas", ["up", f"--provider={provider}"])]
+        )
     try:
         for phase, arguments in commands:
             with LAB_LOCK:

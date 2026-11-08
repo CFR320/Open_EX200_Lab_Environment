@@ -84,6 +84,20 @@ class AttemptTests(unittest.TestCase):
 
 
 class LabOperationTests(unittest.TestCase):
+    class FakeProcess:
+        def __init__(self, *args, **kwargs):
+            self.args = args[0]
+            self.stdout = iter(["Vagrant output\n"])
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def wait(self):
+            return 0
+
     def setUp(self):
         self.previous_operation = {**server.LAB_OPERATION, "output": list(server.LAB_OPERATION["output"])}
         server.LAB_OPERATION.update(
@@ -124,23 +138,41 @@ class LabOperationTests(unittest.TestCase):
         )
         self.assertEqual(provider, "virtualbox")
 
+    def test_vmware_deploys_machines_sequentially(self):
+        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+            server.run_lab_operation("test-operation", "deploy", "vmware_desktop")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [
+                [server.VAGRANT, "up", "gateway", "--provider=vmware_desktop"],
+                [server.VAGRANT, "up", "node1", "--provider=vmware_desktop"],
+                [server.VAGRANT, "up", "node2", "--provider=vmware_desktop"],
+            ],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
+    def test_vmware_reset_destroys_and_deploys_machines_sequentially(self):
+        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+            server.run_lab_operation("test-operation", "reset", "vmware_desktop")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [
+                [server.VAGRANT, "destroy", "-f", "gateway"],
+                [server.VAGRANT, "destroy", "-f", "node1"],
+                [server.VAGRANT, "destroy", "-f", "node2"],
+                [server.VAGRANT, "up", "gateway", "--provider=vmware_desktop"],
+                [server.VAGRANT, "up", "node1", "--provider=vmware_desktop"],
+                [server.VAGRANT, "up", "node2", "--provider=vmware_desktop"],
+            ],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
     def test_reset_destroys_then_deploys_with_selected_provider(self):
-        class FakeProcess:
-            stdout = iter(["Vagrant output\n"])
-
-            def __init__(self, *args, **kwargs):
-                self.args = args[0]
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                return False
-
-            def wait(self):
-                return 0
-
-        with patch.object(server.subprocess, "Popen", side_effect=FakeProcess) as popen:
+        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
             server.run_lab_operation("test-operation", "reset", "hyperv")
 
         self.assertEqual(

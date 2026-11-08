@@ -30,11 +30,18 @@ Desde el directorio del repositorio, elige el proveedor:
 
 ```bash
 vagrant up --provider=virtualbox
-# o: vagrant up --provider=vmware_desktop
 # o: vagrant up --provider=hyperv
 ```
 
-La primera ejecución descarga AlmaLinux, instala las herramientas usadas por las preguntas y puede tardar varios minutos. Para desplegar primero la pasarela y ver sus errores por separado:
+La primera ejecución descarga AlmaLinux, instala las herramientas usadas por las preguntas y puede tardar varios minutos. En VMware, ejecuta las máquinas una a una para evitar conflictos de bloqueo del provider:
+
+```bash
+vagrant up gateway --provider=vmware_desktop
+vagrant up node1 --provider=vmware_desktop
+vagrant up node2 --provider=vmware_desktop
+```
+
+Para desplegar primero la pasarela y ver sus errores por separado:
 
 ```bash
 vagrant up gateway --provider=virtualbox
