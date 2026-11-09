@@ -44,6 +44,8 @@ ALLOWED_ORIGINS = {
     if origin.strip()
 }
 LAB_LOCK = threading.Lock()
+MACHINE_STATUS_CACHE_SECONDS = 60
+MACHINE_STATUS_CACHE: tuple[float, dict[str, str], str | None] | None = None
 LAB_OPERATION: dict[str, Any] = {
     "id": None,
     "action": None,
@@ -291,7 +293,7 @@ def machine_status() -> tuple[dict[str, str], str | None]:
         check=True,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=90,
     )
     states: dict[str, str] = {}
     providers: set[str] = set()
@@ -350,6 +352,7 @@ def configured_console_urls() -> dict[str, dict[str, str]]:
 
 
 def lab_status() -> dict[str, Any]:
+    global MACHINE_STATUS_CACHE
     with LAB_LOCK:
         operation = {**LAB_OPERATION, "output": list(LAB_OPERATION["output"])}
         if operation["running"]:
@@ -361,14 +364,28 @@ def lab_status() -> dict[str, Any]:
                 "ready": False,
                 "status_error": None,
             }
-        try:
-            states, provider = machine_status()
-        except (OSError, subprocess.SubprocessError, RuntimeError) as error:
-            states = {}
-            provider = None
-            status_error = str(error)
-        else:
+        cached_status = MACHINE_STATUS_CACHE
+        if (
+            cached_status is not None
+            and time.monotonic() - cached_status[0] < MACHINE_STATUS_CACHE_SECONDS
+        ):
+            _, states, provider = cached_status
+            states = dict(states)
             status_error = None
+        else:
+            try:
+                states, provider = machine_status()
+            except (OSError, subprocess.SubprocessError, RuntimeError) as error:
+                states = {}
+                provider = (
+                    operation["provider"]
+                    if operation["provider"] in PROVIDERS
+                    else cached_status[2] if cached_status else None
+                )
+                status_error = str(error)
+            else:
+                MACHINE_STATUS_CACHE = (time.monotonic(), dict(states), provider)
+                status_error = None
         try:
             consoles = configured_console_urls().get(provider, {}) if provider else {}
         except RuntimeError as error:
@@ -395,6 +412,7 @@ def append_lab_output(line: str) -> None:
 
 
 def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
+    global MACHINE_STATUS_CACHE
     if provider == "vmware_desktop":
         machines = ("gateway", "node1", "node2")
         commands = []
@@ -478,14 +496,23 @@ def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         with LAB_LOCK:
             if LAB_OPERATION["id"] == operation_id:
+                MACHINE_STATUS_CACHE = None
                 LAB_OPERATION.update(running=False, phase="failed", success=False, error=str(error))
         return
     with LAB_LOCK:
         if LAB_OPERATION["id"] == operation_id:
+            MACHINE_STATUS_CACHE = (
+                time.monotonic(),
+                {machine: "not_created" for machine in MACHINES}
+                if action == "destroy"
+                else {machine: "running" for machine in MACHINES},
+                provider,
+            )
             LAB_OPERATION.update(running=False, phase="completed", success=True, error=None)
 
 
 def start_lab_operation(action: str, provider: str) -> dict[str, Any]:
+    global MACHINE_STATUS_CACHE
     if action not in {"deploy", "reset", "destroy"}:
         raise ValueError("Operación de laboratorio no válida.")
     if not isinstance(provider, str) or provider not in PROVIDERS:
@@ -494,6 +521,7 @@ def start_lab_operation(action: str, provider: str) -> dict[str, Any]:
     with LAB_LOCK:
         if LAB_OPERATION["running"]:
             raise RuntimeError("Ya hay una operación del laboratorio en curso.")
+        MACHINE_STATUS_CACHE = None
         if action in {"reset", "destroy"}:
             with ATTEMPTS_LOCK:
                 if any(attempt["grading"] for attempt in ATTEMPTS.values()):

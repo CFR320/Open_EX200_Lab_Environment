@@ -100,6 +100,8 @@ class LabOperationTests(unittest.TestCase):
 
     def setUp(self):
         self.previous_operation = {**server.LAB_OPERATION, "output": list(server.LAB_OPERATION["output"])}
+        self.previous_status_cache = server.MACHINE_STATUS_CACHE
+        server.MACHINE_STATUS_CACHE = None
         server.LAB_OPERATION.update(
             id="test-operation",
             action="reset",
@@ -114,6 +116,7 @@ class LabOperationTests(unittest.TestCase):
     def tearDown(self):
         server.LAB_OPERATION.clear()
         server.LAB_OPERATION.update(self.previous_operation)
+        server.MACHINE_STATUS_CACHE = self.previous_status_cache
 
     def test_machine_states_parses_vagrant_machine_readable_output(self):
         output = "\n".join(
@@ -130,13 +133,38 @@ class LabOperationTests(unittest.TestCase):
             server.subprocess,
             "run",
             return_value=server.subprocess.CompletedProcess([], 0, output, ""),
-        ):
+        ) as run:
             states, provider = server.machine_status()
         self.assertEqual(
             states,
             {"gateway": "running", "node1": "poweroff", "node2": "running"},
         )
         self.assertEqual(provider, "virtualbox")
+        self.assertEqual(run.call_args.kwargs["timeout"], 90)
+
+    def test_lab_status_preserves_provider_when_vagrant_status_times_out(self):
+        server.LAB_OPERATION.update(running=False, provider="hyperv")
+        with patch.object(
+            server,
+            "machine_status",
+            side_effect=server.subprocess.TimeoutExpired("vagrant status", 90),
+        ):
+            status = server.lab_status()
+
+        self.assertEqual(status["provider"], "hyperv")
+        self.assertEqual(status["consoles"], {})
+        self.assertIn("timed out", status["status_error"])
+
+    def test_lab_status_reuses_recent_machine_status(self):
+        states = {machine: "running" for machine in server.MACHINES}
+        server.MACHINE_STATUS_CACHE = (server.time.monotonic(), states, "hyperv")
+        server.LAB_OPERATION.update(running=False, provider="hyperv")
+
+        with patch.object(server, "machine_status", side_effect=AssertionError("unexpected status call")):
+            status = server.lab_status()
+
+        self.assertTrue(status["ready"])
+        self.assertEqual(status["provider"], "hyperv")
 
     def test_vmware_deploys_machines_sequentially(self):
         with (
@@ -251,6 +279,10 @@ class LabOperationTests(unittest.TestCase):
         )
         self.assertFalse(server.LAB_OPERATION["running"])
         self.assertTrue(server.LAB_OPERATION["success"])
+        self.assertEqual(
+            server.MACHINE_STATUS_CACHE[1],
+            {machine: "running" for machine in server.MACHINES},
+        )
 
     def test_invalid_provider_is_rejected_before_starting_operation(self):
         with self.assertRaises(ValueError):

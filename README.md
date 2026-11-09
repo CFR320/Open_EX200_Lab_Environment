@@ -188,7 +188,7 @@ Con los valores `127.0.0.1`, los proxies de consola deben correr directamente en
 
 Hyper-V no expone mediante Vagrant un stream de framebuffer estándar que esta aplicación pueda incrustar en una página. Windows Admin Center ofrece administración web del host y un flujo **Connect** para la VM, pero la documentación de Microsoft indica que la consola usa VMConnect/archivo RDP y un cliente RDP nativo, no una consola de navegador equivalente a Guacamole. El enlace configurado abre WAC; la consola de GRUB/arranque, Ctrl+Alt+Supr y el teclado virtual se manejan desde VMConnect/RDP en el anfitrión. Consulta [Manage Virtual Machines with Windows Admin Center](https://learn.microsoft.com/en-us/windows-server/manage/windows-admin-center/use/manage-virtual-machines).
 
-La integración de enlaces está disponible para los tres proveedores, pero la consola framebuffer embebida de Hyper-V no es viable de forma portable con la interfaz actual. No se instala XRDP dentro del guest como sustituto: eso mostraría un escritorio invitado separado y no la consola real de arranque/GRUB.
+La consulta de estado de Vagrant puede tardar más en Hyper-V; la API espera hasta 90 segundos, conserva el proveedor detectado si vence el tiempo y reutiliza brevemente el último estado para evitar repetir consultas lentas. Así la sección de consolas sigue visible aunque falle una consulta de estado. La integración de enlaces está disponible para los tres proveedores, pero la consola framebuffer embebida de Hyper-V no es viable de forma portable con la interfaz actual. No se instala XRDP dentro del guest como sustituto: eso mostraría un escritorio invitado separado y no la consola real de arranque/GRUB.
 
 ## Gestión de máquinas
 
