@@ -2,6 +2,7 @@
 set -euo pipefail
 
 lab_ip=${1:?A static lab IPv4 address is required}
+restorecon -RF /etc/NetworkManager/system-connections
 if ip -o -4 address show | grep -Fq " $lab_ip/"; then
   exit 0
 fi

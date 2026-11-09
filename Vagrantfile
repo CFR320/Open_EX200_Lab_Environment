@@ -10,10 +10,7 @@ if vbox_vrde_enabled
   end
 end
 
-vmware_vnc_password = ENV["EX200_VMWARE_VNC_PASSWORD"]
-if vmware_vnc_password && !vmware_vnc_password.match?(/\A[A-Za-z0-9]{8}\z/)
-  raise "EX200_VMWARE_VNC_PASSWORD must contain exactly 8 alphanumeric characters."
-end
+vmware_vnc_password = "Ex200Vnc"
 
 Vagrant.configure("2") do |config|
   config.vm.box = "almalinux/10"
@@ -61,17 +58,10 @@ Vagrant.configure("2") do |config|
         provider.vmx["virtualhw.version"] = "19"
         provider.vmx["memsize"] = settings[:memory].to_s
         provider.vmx["numvcpus"] = settings[:cpus].to_s
-        if vmware_vnc_password
-          provider.vmx["RemoteDisplay.vnc.enabled"] = "TRUE"
-          provider.vmx["RemoteDisplay.vnc.ip"] = ENV.fetch("EX200_VMWARE_VNC_ADDRESS", "127.0.0.1")
-          provider.vmx["RemoteDisplay.vnc.port"] = (5900 + settings[:console_index]).to_s
-          provider.vmx["RemoteDisplay.vnc.password"] = vmware_vnc_password
-        else
-          provider.vmx["RemoteDisplay.vnc.enabled"] = nil
-          provider.vmx["RemoteDisplay.vnc.ip"] = nil
-          provider.vmx["RemoteDisplay.vnc.port"] = nil
-          provider.vmx["RemoteDisplay.vnc.password"] = nil
-        end
+        provider.vmx["RemoteDisplay.vnc.enabled"] = "TRUE"
+        provider.vmx["RemoteDisplay.vnc.ip"] = "127.0.0.1"
+        provider.vmx["RemoteDisplay.vnc.port"] = (5900 + settings[:console_index]).to_s
+        provider.vmx["RemoteDisplay.vnc.password"] = vmware_vnc_password
       end
 
       machine.vm.provider "hyperv" do |provider|

@@ -4,13 +4,16 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 import io
 import json
 import os
 import re
 import secrets
 import shlex
+import socket
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -51,6 +54,98 @@ LAB_OPERATION: dict[str, Any] = {
     "error": None,
     "output": [],
 }
+CONSOLE_PROXIES: list[subprocess.Popen[bytes]] = []
+
+
+def novnc_root() -> Path:
+    configured = os.environ.get("EX200_NOVNC_PATH")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    if os.name == "nt":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if not local_app_data:
+            raise RuntimeError("LOCALAPPDATA no está definido; configura EX200_NOVNC_PATH.")
+        return Path(local_app_data) / "EX200Lab" / "noVNC"
+    return Path.home() / ".local" / "share" / "ex200-lab" / "noVNC"
+
+
+def console_proxy_command(web_root: Path, web_port: int, vnc_port: int) -> list[str]:
+    return [
+        sys.executable,
+        "-m",
+        "websockify",
+        "--web",
+        str(web_root),
+        "--heartbeat",
+        "30",
+        f"127.0.0.1:{web_port}",
+        f"127.0.0.1:{vnc_port}",
+    ]
+
+
+def start_console_proxies() -> None:
+    web_root = novnc_root()
+    if not (web_root / "vnc.html").is_file():
+        raise RuntimeError(
+            f"No se encontró noVNC en {web_root}. Ejecuta scripts/setup_novnc.ps1 "
+            "o configura EX200_NOVNC_PATH."
+        )
+    if importlib.util.find_spec("websockify") is None:
+        raise RuntimeError(
+            "No está instalado websockify. Ejecuta scripts/setup_novnc.ps1 "
+            "para instalar las dependencias de las consolas."
+        )
+
+    log_dir = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "EX200Lab" / "logs"
+    if os.name != "nt":
+        log_dir = Path.home() / ".local" / "state" / "ex200-lab"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    for index in range(3):
+        web_port = 6081 + index
+        vnc_port = 5901 + index
+        log_path = log_dir / f"websockify-{web_port}.log"
+        with log_path.open("a", encoding="utf-8") as log_file:
+            process = subprocess.Popen(
+                console_proxy_command(web_root, web_port, vnc_port),
+                cwd=ROOT,
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+            )
+        CONSOLE_PROXIES.append(process)
+
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                stop_console_proxies()
+                try:
+                    details = log_path.read_text(encoding="utf-8")[-2000:]
+                except OSError:
+                    details = ""
+                raise RuntimeError(
+                    f"No se pudo iniciar el proxy noVNC en 127.0.0.1:{web_port}."
+                    + (f"\n{details}" if details else "")
+                )
+            try:
+                with socket.create_connection(("127.0.0.1", web_port), timeout=0.25):
+                    break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            stop_console_proxies()
+            raise RuntimeError(f"El proxy noVNC no abrió 127.0.0.1:{web_port} a tiempo.")
+
+
+def stop_console_proxies() -> None:
+    while CONSOLE_PROXIES:
+        process = CONSOLE_PROXIES.pop()
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
 
 
 def new_attempt() -> dict[str, Any]:
@@ -218,7 +313,15 @@ def machine_states() -> dict[str, str]:
 
 
 def configured_console_urls() -> dict[str, dict[str, str]]:
-    raw_urls = os.environ.get("EX200_CONSOLE_URLS", "{}")
+    raw_urls = os.environ.get("EX200_CONSOLE_URLS")
+    if raw_urls is None:
+        return {
+            "vmware_desktop": {
+                "gateway": "http://127.0.0.1:6081/vnc.html?autoconnect=1",
+                "node1": "http://127.0.0.1:6082/vnc.html?autoconnect=1",
+                "node2": "http://127.0.0.1:6083/vnc.html?autoconnect=1",
+            }
+        }
     try:
         value = json.loads(raw_urls)
     except json.JSONDecodeError as error:
@@ -590,15 +693,20 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     host = os.environ.get("EX200_HOST", "127.0.0.1")
     port = int(os.environ.get("EX200_PORT", "8000"))
-    server = ThreadingHTTPServer((host, port), Handler)
-    print(f"EX200 Lab disponible en http://{host}:{port}")
-    print("Mantén este servidor local: los resultados se validan usando SSH a las VMs de Vagrant.")
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        start_console_proxies()
+        server = ThreadingHTTPServer((host, port), Handler)
+        print(f"EX200 Lab disponible en http://{host}:{port}")
+        print("Consolas noVNC disponibles en http://127.0.0.1:6081-6083")
+        print("Mantén este servidor local: los resultados se validan usando SSH a las VMs de Vagrant.")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
     finally:
-        server.server_close()
+        stop_console_proxies()
 
 
 if __name__ == "__main__":

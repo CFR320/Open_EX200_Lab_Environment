@@ -115,7 +115,7 @@ La interfaz solo contiene HTML, CSS y JavaScript: el contenedor Nginx no recibe 
 
 ## Contenedores y consolas web
 
-El panel **Consolas de las máquinas** permite incrustar el cliente web configurado o abrirlo en una pestaña aparte. Define las URL según tu instalación; no pongas credenciales en ellas:
+El panel **Consolas de las máquinas** permite incrustar el cliente web configurado o abrirlo en una pestaña aparte. Para VMware, la aplicación configura por defecto una URL noVNC distinta para cada VM en los puertos 6081-6083. Para otros clientes/proveedores puedes definir URL propias; no pongas credenciales en ellas:
 
 ```bash
 export EX200_CONSOLE_URLS='{
@@ -123,11 +123,6 @@ export EX200_CONSOLE_URLS='{
     "gateway": "http://127.0.0.1:8081/guacamole/",
     "node1": "http://127.0.0.1:8081/guacamole/",
     "node2": "http://127.0.0.1:8081/guacamole/"
-  },
-  "vmware_desktop": {
-    "gateway": "http://127.0.0.1:6081/vnc.html?autoconnect=1",
-    "node1": "http://127.0.0.1:6082/vnc.html?autoconnect=1",
-    "node2": "http://127.0.0.1:6083/vnc.html?autoconnect=1"
   },
   "hyperv": {
     "gateway": "https://wac.example.test",
@@ -138,7 +133,14 @@ export EX200_CONSOLE_URLS='{
 python3 server.py
 ```
 
-La pasarela debe poder acceder al endpoint del hipervisor. Los enlaces noVNC pueden ser distintos por VM; un enlace a la portada de Guacamole/WAC mostrará su selector/inventario y quizá requiera escoger la VM. Para VirtualBox/VMware la página intenta incrustar el cliente; si la pasarela bloquea la inserción en un marco, usa **Abrir consola web**. El cliente web de Guacamole y noVNC ofrecen controles de teclado, incluido el envío de teclas especiales/teclado virtual según protocolo; esta aplicación no envía pulsaciones por su cuenta.
+La URL VMware por defecto es `http://127.0.0.1:6081/vnc.html?autoconnect=1` para gateway; node1 y node2 usan 6082 y 6083. Instala el proxy noVNC una sola vez en Windows y arranca la API con `py server.py`; la API inicia y detiene automáticamente los tres proxies:
+
+```powershell
+.\scripts\setup_novnc.ps1
+py server.py
+```
+
+No abras directamente los puertos 5901-5903 en un navegador: son el protocolo VNC, no HTTP. Usa las URL web 6081-6083. `EX200_CONSOLE_URLS`, cuando se define, sustituye el mapa predeterminado. Para VirtualBox/VMware la página intenta incrustar el cliente; si el cliente bloquea la inserción en un marco, usa **Abrir consola web**. Guacamole y noVNC ofrecen controles de teclado según protocolo; esta aplicación no envía pulsaciones por su cuenta.
 
 ### VirtualBox
 
@@ -160,24 +162,25 @@ Vagrant asigna los puertos 5101-5103, limita VRDE a `127.0.0.1` y exige autentic
 
 ### VMware
 
-El provider de Vagrant permite personalizar claves VMX ([documentación](https://developer.hashicorp.com/vagrant/docs/providers/vmware/configuration#vmx-customization)); VNC es una interfaz VMX específica de VMware, no una API estable de Vagrant. Para habilitarla:
+El provider de Vagrant permite personalizar claves VMX ([documentación](https://developer.hashicorp.com/vagrant/docs/providers/vmware/configuration#vmx-customization)); VNC es una interfaz VMX específica de VMware, no una API estable de Vagrant. Este laboratorio la habilita automáticamente en cada VM:
+
+| VM | Dirección (solo anfitrión) | Puerto | Contraseña |
+|---|---|---:|---|
+| gateway | `127.0.0.1` | 5901 | `Ex200Vnc` |
+| node1 | `127.0.0.1` | 5902 | `Ex200Vnc` |
+| node2 | `127.0.0.1` | 5903 | `Ex200Vnc` |
+
+La contraseña fija de ocho caracteres es solo para este entorno de pruebas. VMware la guarda en texto claro en la configuración VMX: protege `.vagrant` y no cambies la escucha de `127.0.0.1` ni expongas estos puertos en una red no confiable. La contraseña no sustituye la configuración de noVNC/Guacamole necesaria para mostrar la consola dentro del navegador; sin ese proxy, usa un cliente VNC con la dirección, puerto y contraseña de la tabla. El panel de consolas muestra los mismos datos para cada VM.
+
+Al crear una VM con `vagrant up`, VMware inicia VNC junto con la máquina. Para aplicar el cambio a VMs existentes, recárgalas una por una (no destruye sus discos):
 
 ```bash
-export EX200_VMWARE_VNC_PASSWORD='VncPass8'
-python3 server.py
+vagrant reload gateway
+vagrant reload node1
+vagrant reload node2
 ```
 
-Se usan los puertos 5901-5903 y escucha en `127.0.0.1`; puedes ajustar la dirección mediante `EX200_VMWARE_VNC_ADDRESS`. VMware almacena la contraseña VNC en la configuración VMX, así que protege los archivos de `.vagrant`. Publica esas conexiones mediante noVNC/websockify o Guacamole. La contraseña VNC de VMware está limitada a 8 caracteres; se exigen ocho alfanuméricos para evitar problemas de escape en VMX. No uses esta opción en una red no confiable.
-
-Con noVNC instalado desde su repositorio, crea un proxy por máquina en el anfitrión (en terminales separadas):
-
-```bash
-./utils/novnc_proxy --vnc 127.0.0.1:5901 --listen 127.0.0.1:6081
-./utils/novnc_proxy --vnc 127.0.0.1:5902 --listen 127.0.0.1:6082
-./utils/novnc_proxy --vnc 127.0.0.1:5903 --listen 127.0.0.1:6083
-```
-
-La aplicación deja el cliente web de noVNC accesible en cada puerto indicado; en su barra de herramientas están el teclado virtual y las teclas especiales. Para VirtualBox, configura tres conexiones RDP en Guacamole hacia `127.0.0.1:5101`, `:5102` y `:5103`, usuario `ex200` y la contraseña de VRDE configurada arriba.
+La API publica el cliente web de noVNC en cada puerto indicado; en su barra de herramientas están el teclado virtual y las teclas especiales. Para VirtualBox, configura tres conexiones RDP en Guacamole hacia `127.0.0.1:5101`, `:5102` y `:5103`, usuario `ex200` y la contraseña de VRDE configurada arriba.
 
 Con los valores `127.0.0.1`, los proxies de consola deben correr directamente en el anfitrión. Si los ejecutas en contenedores, necesitarán una dirección del anfitrión alcanzable desde la red del contenedor. Cambiar a `0.0.0.0` facilita esa ruta, pero expone el servicio en todas las interfaces; hazlo solo con contraseña, firewall que limite origen/puerto y una red confiable. La consola web siempre debe quedar protegida por autenticación y publicarse solo en localhost.
 

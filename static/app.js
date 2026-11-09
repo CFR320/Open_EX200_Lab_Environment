@@ -88,11 +88,11 @@ function renderConsoles(status) {
     ? "Hyper-V no expone una consola de framebuffer web estándar. El enlace abre Windows Admin Center si se ha configurado; para GRUB y arranque se necesita VMConnect/RDP desde el anfitrión."
     : provider === "virtualbox"
       ? "VirtualBox usa VRDE/RDP; requiere un Extension Pack compatible que incluya el módulo VRDE y Apache Guacamole para navegador. En Guacamole/noVNC, los controles de teclado dependen de la conexión."
-      : "VMware usa VNC por máquina. Configura noVNC o Apache Guacamole para abrir cada pantalla y enviar teclas especiales.";
+      : "VMware VNC está activo solo en el anfitrión (127.0.0.1). Las URL noVNC están configuradas por máquina; inicia sus proxies locales en los puertos 6081-6083 para abrirlas en el navegador.";
 
   const list = document.querySelector("#console-list");
   list.replaceChildren();
-  for (const [machine, label] of machineNames) {
+  for (const [index, [machine, label]] of machineNames.entries()) {
     const card = document.createElement("article");
     card.className = "console-card";
     const heading = document.createElement("h3");
@@ -143,7 +143,11 @@ function renderConsoles(status) {
       unavailable.className = "muted";
       unavailable.textContent = provider === "hyperv"
         ? "Configura la URL de Windows Admin Center para este host."
-        : "Configura la URL de la conexión del navegador para esta VM.";
+        : provider === "vmware_desktop" && machineState.textContent === "running"
+          ? `VNC: 127.0.0.1:${5901 + index} · Contraseña: Ex200Vnc.`
+          : provider === "vmware_desktop"
+            ? "La consola VNC estará disponible cuando la VM esté encendida."
+            : "Configura la URL de la conexión del navegador para esta VM.";
       card.append(heading, machineState, unavailable);
     }
     list.append(card);

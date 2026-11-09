@@ -266,6 +266,18 @@ class LabOperationTests(unittest.TestCase):
         self.assertTrue(operation["running"])
 
     def test_console_urls_accept_only_web_urls_without_embedded_credentials(self):
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(
+                server.configured_console_urls(),
+                {
+                    "vmware_desktop": {
+                        "gateway": "http://127.0.0.1:6081/vnc.html?autoconnect=1",
+                        "node1": "http://127.0.0.1:6082/vnc.html?autoconnect=1",
+                        "node2": "http://127.0.0.1:6083/vnc.html?autoconnect=1",
+                    }
+                },
+            )
+
         configured = (
             '{"virtualbox":{"node1":"http://127.0.0.1:8081/console"},'
             '"hyperv":{"node2":"https://wac.example.test"}}'
@@ -288,6 +300,23 @@ class LabOperationTests(unittest.TestCase):
         with patch.dict("os.environ", {"EX200_CONSOLE_URLS": credential_url}):
             with self.assertRaises(RuntimeError):
                 server.configured_console_urls()
+
+    def test_no_vnc_proxy_routes_each_web_port_to_its_vnc_port(self):
+        with patch.object(server.sys, "executable", "python"):
+            self.assertEqual(
+                server.console_proxy_command(server.Path("C:/noVNC"), 6082, 5902),
+                [
+                    "python",
+                    "-m",
+                    "websockify",
+                    "--web",
+                    str(server.Path("C:/noVNC")),
+                    "--heartbeat",
+                    "30",
+                    "127.0.0.1:6082",
+                    "127.0.0.1:5902",
+                ],
+            )
 
 
 class WebApiTests(unittest.TestCase):

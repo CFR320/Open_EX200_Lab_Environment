@@ -116,5 +116,14 @@ No ejecutar `vagrant destroy` sobre estas VMs: contienen el estado resuelto de e
 - **Causa:** `mktemp` crea el authfile vacío; `podman login` intenta leerlo como JSON antes de guardar las credenciales y falla con `unexpected end of JSON input`.
 - **Corrección aplicada:** inicializar el authfile temporal con el JSON válido `{"auths":{}}` antes de ejecutar `podman login`. Verificado abajo con el aprovisionamiento real del gateway.
 - **Error posterior en node1:** el `ping` de node1 a `172.25.250.254` funcionaba, pero `/health` devolvía HTTP 404. En el gateway faltaba `/var/www/ex200/health`, que se crea al final del script; por tanto, la VM seguía parcialmente aprovisionada y el error del nodo era una consecuencia, no un fallo de la red VMware.
+- **Diagnóstico del nuevo intento:** los logs confirman que el registry aceptó el manifiesto con HTTP 201; el `podman push` concluyó. La VM se detuvo antes de crear `/health`. Al reprovisionar, se detectó además que SELinux había etiquetado `/etc/NetworkManager/system-connections/eth1.nmconnection` como `user_tmp_t`, impidiendo a NetworkManager reemplazar el perfil.
+- **Corrección aplicada:** `provision/lab-interface.sh` restaura los contextos SELinux de los perfiles de NetworkManager antes de comprobar si la interfaz ya tiene la IP esperada. Así también repara perfiles con etiquetas incorrectas en una VM parcialmente aprovisionada.
 - **Recuperación verificada:** `vagrant provision gateway` completó el inicio de sesión y push al registro (`Login Succeeded`). Después, `/health` devolvió `ok` desde gateway y node1; `vagrant up node1 --provider=vmware_desktop` aplicó `lab-network` y terminó correctamente. `vagrant up node2 --provider=vmware_desktop` también terminó correctamente. Las tres VMs quedaron en ejecución, sin destruir ni recrear las existentes.
 - **Prevención:** en despliegues VMware la aplicación comprueba la salud local del gateway antes de arrancar los nodos y, solo si falla, ejecuta `vagrant provision gateway` y vuelve a comprobarla. Se añadió una prueba de regresión para la recuperación de un gateway que devuelve 404.
+
+## Consolas VMware VNC (2026-11-09)
+
+- Se habilitó VNC por defecto en la configuración VMware de las tres VMs, con la contraseña fija de laboratorio `Ex200Vnc` (ocho caracteres alfanuméricos), puertos 5901-5903 y escucha exclusiva en `127.0.0.1`.
+- Las VMs que ya estaban creadas se actualizaron con `vagrant reload <vm> --no-provision`, una a una y sin destruir discos.
+- Verificación: cada VMX tiene VNC habilitado en su puerto asignado; Windows escucha en `127.0.0.1:5901`, `:5902` y `:5903`; los tres sockets respondieron con el saludo RFB `RFB 003.008` y aceptaron la autenticación con la contraseña fija.
+- El panel de consolas muestra dirección, puerto y contraseña para conectar con un cliente VNC. Para verlas incrustadas en el navegador sigue siendo necesario configurar un proxy noVNC/Guacamole.
