@@ -312,7 +312,7 @@ def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
         if action != "destroy":
             commands.append(("Desplegando máquinas", ["up", f"--provider={provider}"]))
     try:
-        for phase, arguments in commands:
+        def run_vagrant_command(phase: str, arguments: list[str]) -> None:
             with LAB_LOCK:
                 LAB_OPERATION["phase"] = phase
             append_lab_output(f"$ {VAGRANT} {' '.join(arguments)}")
@@ -334,6 +334,44 @@ def run_lab_operation(operation_id: str, action: str, provider: str) -> None:
             if return_code:
                 tail = "\n".join(LAB_OPERATION["output"][-10:])
                 raise RuntimeError(f"Vagrant terminó con código {return_code}.\n{tail}")
+
+        def gateway_is_ready() -> bool:
+            arguments = [
+                "ssh",
+                "gateway",
+                "--command",
+                "curl --fail --silent --show-error --max-time 3 http://127.0.0.1/health",
+            ]
+            append_lab_output(f"$ {VAGRANT} {' '.join(arguments)}")
+            result = subprocess.run(
+                [VAGRANT, *arguments],
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+            )
+            for line in result.stdout.splitlines():
+                append_lab_output(line)
+            return result.returncode == 0
+
+        for phase, arguments in commands:
+            run_vagrant_command(phase, arguments)
+            if provider == "vmware_desktop" and arguments[:2] == ["up", "gateway"]:
+                with LAB_LOCK:
+                    LAB_OPERATION["phase"] = "Verificando gateway"
+                if not gateway_is_ready():
+                    append_lab_output(
+                        "El gateway no está listo; se repetirá su aprovisionamiento antes de continuar."
+                    )
+                    run_vagrant_command("Reaprovisionando gateway", ["provision", "gateway"])
+                    if not gateway_is_ready():
+                        raise RuntimeError(
+                            "El gateway sigue sin responder en http://127.0.0.1/health "
+                            "después de volver a aprovisionarlo."
+                        )
     except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         with LAB_LOCK:
             if LAB_OPERATION["id"] == operation_id:

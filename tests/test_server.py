@@ -139,7 +139,14 @@ class LabOperationTests(unittest.TestCase):
         self.assertEqual(provider, "virtualbox")
 
     def test_vmware_deploys_machines_sequentially(self):
-        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+        with (
+            patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen,
+            patch.object(
+                server.subprocess,
+                "run",
+                return_value=server.subprocess.CompletedProcess([], 0, "ok\n", ""),
+            ),
+        ):
             server.run_lab_operation("test-operation", "deploy", "vmware_desktop")
 
         self.assertEqual(
@@ -153,8 +160,42 @@ class LabOperationTests(unittest.TestCase):
         self.assertFalse(server.LAB_OPERATION["running"])
         self.assertTrue(server.LAB_OPERATION["success"])
 
+    def test_vmware_reprovisions_gateway_when_health_check_fails(self):
+        unhealthy_gateway = server.subprocess.CompletedProcess(
+            [], 22, "curl: (22) The requested URL returned error: 404\n", ""
+        )
+        healthy_gateway = server.subprocess.CompletedProcess([], 0, "ok\n", "")
+        with (
+            patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen,
+            patch.object(
+                server.subprocess,
+                "run",
+                side_effect=[unhealthy_gateway, healthy_gateway],
+            ),
+        ):
+            server.run_lab_operation("test-operation", "deploy", "vmware_desktop")
+
+        self.assertEqual(
+            [call.args[0] for call in popen.call_args_list],
+            [
+                [server.VAGRANT, "up", "gateway", "--provider=vmware_desktop"],
+                [server.VAGRANT, "provision", "gateway"],
+                [server.VAGRANT, "up", "node1", "--provider=vmware_desktop"],
+                [server.VAGRANT, "up", "node2", "--provider=vmware_desktop"],
+            ],
+        )
+        self.assertFalse(server.LAB_OPERATION["running"])
+        self.assertTrue(server.LAB_OPERATION["success"])
+
     def test_vmware_reset_destroys_and_deploys_machines_sequentially(self):
-        with patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen:
+        with (
+            patch.object(server.subprocess, "Popen", side_effect=self.FakeProcess) as popen,
+            patch.object(
+                server.subprocess,
+                "run",
+                return_value=server.subprocess.CompletedProcess([], 0, "ok\n", ""),
+            ),
+        ):
             server.run_lab_operation("test-operation", "reset", "vmware_desktop")
 
         self.assertEqual(

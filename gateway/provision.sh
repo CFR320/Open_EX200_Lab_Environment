@@ -212,6 +212,7 @@ done
 podman tag docker.io/library/python:3.13-alpine localhost:5000/python:3.13-alpine
 registry_auth_file=$(mktemp /run/ex200-registry-auth.XXXXXX)
 trap 'rm -f "$registry_auth_file"' EXIT
+printf '%s\n' '{"auths":{}}' > "$registry_auth_file"
 podman login --authfile "$registry_auth_file" --tls-verify=false \
   --username student --password redhat localhost:5000
 podman push --authfile "$registry_auth_file" --tls-verify=false \
